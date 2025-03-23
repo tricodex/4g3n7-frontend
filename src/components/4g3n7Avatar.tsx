@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
+import { useAvatarStore } from '@/lib/avatarStore';
 import * as THREE from 'three';
 
 // Use a global flag for the singleton pattern instead of module-level
@@ -50,8 +51,19 @@ declare global {
   }
 }
 
+// Add global debug method for direct manipulation
+if (typeof window !== 'undefined') {
+  // @ts-ignore
+  window.debugAnimateMouth = (open: boolean) => {
+    console.log('Debug mouth animation called:', open);
+    // Will be populated by the component
+  };
+}
+
 // Avatar component
 const AgentAvatar = () => {
+  // Use Zustand store for state management
+  const { isSpeaking } = useAvatarStore();
   const mountRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode & {
@@ -76,8 +88,15 @@ const AgentAvatar = () => {
   
   const clockRef = useRef<THREE.Clock>(new THREE.Clock());
   
-  // Simplified state
-  const [isPlaying, setIsPlaying] = useState(false);
+  // Local state (used in addition to Zustand store)
+  const [localIsPlaying, setLocalIsPlaying] = useState(false);
+  
+  // Effect to sync local state with Zustand store (one-way only)
+  useEffect(() => {
+    console.log('4g3n7Avatar: Zustand store isSpeaking changed to', isSpeaking);
+    // Only update local state from Zustand store, not vice versa
+    setLocalIsPlaying(isSpeaking);
+  }, [isSpeaking]); // Only depend on isSpeaking, not localIsPlaying
   const [mood, setMood] = useState<'neutral' | 'confident' | 'analytical' | 'alert'>('confident');
   
   // Sound frequency bands
@@ -125,6 +144,80 @@ const AgentAvatar = () => {
       particles: 0xff7700
     }
   };
+
+  // Connect our global debug function to directly manipulate mouth with more robust error handling
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Define a more robust debug function that will work even before refs are set
+      // @ts-ignore
+      window.debugAnimateMouth = (open: boolean) => {
+        console.log('🔴 Manual mouth animation triggered:', open);
+        
+        // Store the state - this helps with debugging
+        if (typeof window !== 'undefined') {
+          // @ts-ignore
+          window.__AVATAR_SPEAKING_STATE__ = open;
+        }
+        
+        // Update Zustand store
+        // This is the proper way to control the mouth through state
+        if (useAvatarStore.getState().isSpeaking !== open) {
+          useAvatarStore.setState({ isSpeaking: open });
+        }
+        
+        // Also update local component state as a fallback
+        setLocalIsPlaying(open);
+        
+        // Direct manipulation of mouth components (extreme values for visibility)
+        // This is a fallback direct manipulation that bypasses state
+        if (upperLipRef.current && lowerLipRef.current && innerMouthRef.current) {
+          try {
+            if (open) {
+              // Extreme opening for visibility during testing
+              upperLipRef.current.position.y = 0.3;  // More pronounced
+              lowerLipRef.current.position.y = -0.4; // More pronounced
+              innerMouthRef.current.scale.y = 8.0;   // More pronounced
+              
+              // Force the material to update
+              (innerMouthRef.current.material as THREE.MeshBasicMaterial).opacity = 1.0;
+              (innerMouthRef.current.material as THREE.MeshBasicMaterial).needsUpdate = true;
+            } else {
+              upperLipRef.current.position.y = 0.05;
+              lowerLipRef.current.position.y = -0.05;
+              innerMouthRef.current.scale.y = 1.0;
+              
+              // Force the material to update
+              (innerMouthRef.current.material as THREE.MeshBasicMaterial).opacity = 0.6;
+              (innerMouthRef.current.material as THREE.MeshBasicMaterial).needsUpdate = true;
+            }
+            
+            // Force the matrices to update
+            upperLipRef.current.updateMatrix();
+            lowerLipRef.current.updateMatrix();
+            innerMouthRef.current.updateMatrix();
+            
+            // Log the current positions for debugging
+            console.log('Mouth positions set to:', {
+              upperLip: upperLipRef.current.position.y,
+              lowerLip: lowerLipRef.current.position.y,
+              innerMouth: innerMouthRef.current.scale.y
+            });
+          } catch (err) {
+            console.error('Error manipulating mouth directly:', err);
+          }
+        } else {
+          console.warn('Mouth components not yet initialized');
+        }
+      };
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        // @ts-ignore
+        window.debugAnimateMouth = () => console.log('Debug function detached');
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Cancel any existing animation frames from previous renders
@@ -222,7 +315,7 @@ const AgentAvatar = () => {
           // Debug animation frame
           if (elapsedTime % 5 < 0.1) { // Log every ~5 seconds
             console.log('4g3n7Avatar: Animation frame running, time:', elapsedTime.toFixed(2));
-            console.log('4g3n7Avatar: isPlaying state:', isPlaying);
+            console.log('4g3n7Avatar: isPlaying states:', { zustand: isSpeaking, local: localIsPlaying });
           }
           
           // Update avatar animations
@@ -281,34 +374,46 @@ const AgentAvatar = () => {
     };
   }, []);
   
-  // Listen for speech synthesis events from the VoiceButton component
+  // Legacy event listeners to handle events for backward compatibility
+  // without triggering updates to the Zustand store
   useEffect(() => {
-    console.log('4g3n7Avatar: Setting up speech event listeners');
+    console.log('4g3n7Avatar: Setting up legacy speech event listeners');
+    
+    // Keep state flag to prevent duplicate events
+    let legacyIsPlaying = false;
     
     const handleSpeechStart = (e) => {
-      console.log('4g3n7Avatar: Received speechstart event', e);
-      setIsPlaying(true);
-      
-      // Manually simulate audio analysis since we might not get real audio data
-      setAudioData(prev => ({
-        ...prev,
-        volume: 0.3 + Math.random() * 0.2,
-        bass: 0.4 + Math.random() * 0.3,
-        mid: 0.3 + Math.random() * 0.2,
-        treble: 0.2 + Math.random() * 0.2
-      }));
+      console.log('4g3n7Avatar: Received speechstart event from legacy system', e);
+      if (!legacyIsPlaying) {
+        legacyIsPlaying = true;
+        // Only update local component state, not Zustand (to avoid cycles)
+        setLocalIsPlaying(true);
+        
+        // Manually simulate audio analysis since we might not get real audio data
+        setAudioData(prev => ({
+          ...prev,
+          volume: 0.4 + Math.random() * 0.3,
+          bass: 0.5 + Math.random() * 0.3,
+          mid: 0.4 + Math.random() * 0.3,
+          treble: 0.3 + Math.random() * 0.2
+        }));
+      }
     };
     
     const handleSpeechEnd = () => {
-      console.log('4g3n7Avatar: Received speechend event');
-      setIsPlaying(false);
+      console.log('4g3n7Avatar: Received speechend event from legacy system');
+      if (legacyIsPlaying) {
+        legacyIsPlaying = false;
+        // Only update local component state, not Zustand (to avoid cycles)
+        setLocalIsPlaying(false);
+      }
     };
     
-    // Listen for both custom events and window message events
+    // Listen for legacy event types for backward compatibility
     window.addEventListener('speechstart', handleSpeechStart);
     window.addEventListener('speechend', handleSpeechEnd);
     
-    // Also listen for message events that might be used instead
+    // Also listen for message events
     const handleMessage = (event) => {
       if (event.data === 'speechstart') {
         handleSpeechStart(event);
@@ -316,7 +421,6 @@ const AgentAvatar = () => {
         handleSpeechEnd();
       }
     };
-    
     window.addEventListener('message', handleMessage);
     
     return () => {
@@ -593,7 +697,7 @@ const AgentAvatar = () => {
     innerMouthRef.current = innerMouth;
   };
   
-  // Create energy field around the avatar
+  // Create energy field ABOVE the avatar (sound waves)
   const createEnergyField = (avatar: THREE.Group) => {
     const energyCount = 300;
     const energyGeometry = new THREE.BufferGeometry();
@@ -602,13 +706,15 @@ const AgentAvatar = () => {
     
     for (let i = 0; i < energyCount; i++) {
       const i3 = i * 3;
-      const radius = 1.5 + Math.random() * 1.0;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI;
+      // New distribution for particles positioned mostly above the head
+      // Use disc-shaped distribution above the head
+      const radius = 0.5 + Math.random() * 2.0; // Horizontal spread
+      const theta = Math.random() * Math.PI * 2; // Around the head
+      const height = 1.5 + Math.random() * 1.5; // Above the head
       
-      positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
-      positions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta) - 1;  // Center around body
-      positions[i3 + 2] = radius * Math.cos(phi);
+      positions[i3] = radius * Math.cos(theta); // X position
+      positions[i3 + 1] = height; // Y position - now above the head
+      positions[i3 + 2] = radius * Math.sin(theta); // Z position
       
       energySizes[i] = 0.1 + Math.random() * 0.15;
     }
@@ -848,6 +954,19 @@ const AgentAvatar = () => {
   
   // Update avatar animations
   const updateAvatarAnimation = (delta: number, time: number) => {
+    // Only log speaking state on changes to reduce console spam
+    if (time % 30 < 0.01) { // Reduced to every 30 seconds to avoid log flooding
+      console.log('Animation frame check - speaking states:', { isSpeaking, localIsPlaying });
+      
+      // Force animation in animation frame if we're supposed to be speaking
+      if ((isSpeaking || localIsPlaying) && upperLipRef.current && lowerLipRef.current && innerMouthRef.current) {
+        console.log('Animation frame: forcing mouth animation in update loop');
+        const lipPosition = 0.05 + Math.sin(time * 10) * 0.2;
+        upperLipRef.current.position.y = lipPosition;
+        lowerLipRef.current.position.y = -lipPosition;
+        innerMouthRef.current.scale.y = 1 + Math.abs(Math.sin(time * 10)) * 4;
+      }
+    }
     if (avatarRef.current) {
       const avatar = avatarRef.current;
       
@@ -855,7 +974,7 @@ const AgentAvatar = () => {
       avatar.position.y = 0.2 + Math.sin(time * 0.8) * 0.05;
       
       // Head idle rotation if not speaking
-      if (!isPlaying) {
+      if (!(isSpeaking || localIsPlaying)) {
         if (headRef.current) {
           const headTiltX = Math.sin(time * 0.4) * 0.03;
           const headTiltY = Math.sin(time * 0.3) * 0.03;
@@ -866,7 +985,7 @@ const AgentAvatar = () => {
       }
       
       // Mouth idle animation when not speaking
-      if (!isPlaying) {
+      if (!(isSpeaking || localIsPlaying)) {
         if (upperLipRef.current && lowerLipRef.current && innerMouthRef.current) {
           const mouthGap = Math.sin(time * 2) * 0.02;
           if (mouthGap > 0) {
@@ -918,7 +1037,7 @@ const AgentAvatar = () => {
     }
   };
   
-  // Update energy field animation
+  // Update energy field animation - sound waves above the avatar
   const updateEnergyField = (delta: number, time: number) => {
     if (energyFieldRef.current && energyFieldRef.current.userData) {
       const energyField = energyFieldRef.current;
@@ -928,40 +1047,76 @@ const AgentAvatar = () => {
       const originalPositions = energyField.userData.originalPositions;
       const sizes = energyField.geometry.attributes.size.array;
       
+      // Use different animation behavior based on speaking state
+      const isSpeakingNow = isSpeaking || localIsPlaying;
+      
       for (let i = 0; i < positions.length; i += 3) {
         const i3 = i;
         
-        // Calculate distance from center
+        // Get original position
         const x = originalPositions[i3];
         const y = originalPositions[i3 + 1];
         const z = originalPositions[i3 + 2];
-        const radius = Math.sqrt(x*x + y*y + z*z);
         
-        // Apply spherical wave motion
-        const waveOffset = Math.sin(radius * 2 - energyField.userData.animationTime * 3) * 0.2;
-        const scaleFactor = 1 + waveOffset;
+        // Calculate horizontal distance (for wave effect)
+        const horizontalRadius = Math.sqrt(x*x + z*z);
         
-        positions[i3] = originalPositions[i3] * scaleFactor;
-        positions[i3 + 1] = originalPositions[i3 + 1] * scaleFactor;
-        positions[i3 + 2] = originalPositions[i3 + 2] * scaleFactor;
-        
-        // Audio reactivity for particle sizes
-        if (isPlaying) {
-          sizes[i/3] = energyField.userData.sizes[i/3] * (1 + audioData.bass * 3);
+        if (isSpeakingNow) {
+          // More active waves when speaking
+          // Create sound wave visualization that emanates from center
+          // Higher frequency waves based on audio properties
+          const waveOffset = Math.sin(horizontalRadius * 3 - time * 6) * 0.2;
+          const verticalOffset = Math.sin(time * 8 + horizontalRadius * 4) * 0.2;
+          
+          // Apply wave effect mostly to Y (up/down) for sound waves
+          positions[i3] = originalPositions[i3] * (1 + waveOffset * 0.2);
+          positions[i3 + 1] = originalPositions[i3 + 1] + verticalOffset; // Up-down motion
+          positions[i3 + 2] = originalPositions[i3 + 2] * (1 + waveOffset * 0.2);
+          
+          // Make sizes more reactive when speaking
+          sizes[i/3] = energyField.userData.sizes[i/3] * (
+            1.5 + audioData.bass * 2 + 
+            Math.sin(time * 10 + i * 0.1) * 0.5
+          );
         } else {
-          sizes[i/3] = energyField.userData.sizes[i/3] * (1 + Math.sin(time * 2 + i) * 0.2);
+          // Gentle idle animation when not speaking
+          const idleWave = Math.sin(horizontalRadius * 1.5 - time * 1.5) * 0.1;
+          const idleVertical = Math.sin(time * 2 + horizontalRadius * 2) * 0.05;
+          
+          positions[i3] = originalPositions[i3] * (1 + idleWave * 0.1);
+          positions[i3 + 1] = originalPositions[i3 + 1] + idleVertical; // Subtle up-down motion
+          positions[i3 + 2] = originalPositions[i3 + 2] * (1 + idleWave * 0.1);
+          
+          // Regular sizes when not speaking
+          sizes[i/3] = energyField.userData.sizes[i/3] * (0.7 + Math.sin(time * 2 + i) * 0.15);
         }
       }
       
       energyField.geometry.attributes.position.needsUpdate = true;
       energyField.geometry.attributes.size.needsUpdate = true;
       
-      // Mood-specific energy field adjustments
-      if (mood === 'confident') {
-        (energyField.material as THREE.PointsMaterial).opacity = 0.7 + Math.sin(time * 2) * 0.2;
-      } else if (mood === 'alert') {
-        (energyField.material as THREE.PointsMaterial).opacity = 0.5 + Math.abs(Math.sin(time * 4)) * 0.5;
+      // Adjust opacity based on speaking state and mood
+      let targetOpacity = 0.5; // Base opacity
+      
+      if (isSpeakingNow) {
+        // Higher opacity when speaking
+        targetOpacity = 0.8 + Math.sin(time * 4) * 0.15;
+      } else {
+        // Lower opacity when idle
+        targetOpacity = 0.3 + Math.sin(time * 2) * 0.1;
       }
+      
+      // Mood-specific adjustments
+      if (mood === 'confident') {
+        targetOpacity *= 1.2; // Brighter for confident mood
+      } else if (mood === 'alert') {
+        targetOpacity = 0.7 + Math.abs(Math.sin(time * 6)) * 0.3; // Pulsing for alert mood
+      }
+      
+      // Apply opacity with smooth transition
+      const currentOpacity = (energyField.material as THREE.PointsMaterial).opacity;
+      (energyField.material as THREE.PointsMaterial).opacity = 
+        THREE.MathUtils.lerp(currentOpacity, targetOpacity, 0.1);
     }
   };
   
@@ -1169,10 +1324,10 @@ const AgentAvatar = () => {
       }
     }
     
-    // Head movements based on speech or isPlaying state
+    // Head movements based on speech state
     if (headRef.current) {
       // Use a simulated speechIntensity if we're playing but don't have audio data
-      const effectiveIntensity = isPlaying && speechIntensity < 0.05 ? 0.08 : speechIntensity;
+      const effectiveIntensity = (isSpeaking || localIsPlaying) && speechIntensity < 0.05 ? 0.08 : speechIntensity;
       
       if (effectiveIntensity > 0.05) {
         const headTurnFactor = 0.12 * effectiveIntensity;
@@ -1191,11 +1346,16 @@ const AgentAvatar = () => {
       return;
     }
     
-    // Use the isPlaying state to control mouth animation if no speech intensity detected
+    // Only log animation calls when speaking state changes to reduce spam
+    if (isSpeaking || localIsPlaying) {
+      console.log('Animate mouth - speaking:', { volume, speechIntensity, isSpeaking, localIsPlaying });
+    }
+    
+    // Use the Zustand store or local state to control mouth animation
     let effectiveIntensity = speechIntensity;
     
     // If we're supposed to be speaking but don't have audio data yet, simulate it
-    if (isPlaying) {
+    if (isSpeaking || localIsPlaying) {
       // Simulate a more dynamic talking motion
       const time = Date.now() * 0.001;
       // Use a combination of sine waves at different frequencies for more natural movement
@@ -1226,7 +1386,7 @@ const AgentAvatar = () => {
     lowerLipRef.current.position.y = THREE.MathUtils.lerp(lowerLipRef.current.position.y, lowerPos, 0.7);
     
     // Enhanced horizontal lip movement for more expressive speech
-    if (effectiveIntensity > 0.05 || isPlaying) { // Lower threshold for more movement
+    if (effectiveIntensity > 0.05 || isSpeaking || localIsPlaying) { // Lower threshold for more movement
       const lipXOffset = Math.sin(Date.now() * 0.015) * 0.03 * Math.max(0.3, effectiveIntensity);
       upperLipRef.current.position.x = lipXOffset * 0.7;
       lowerLipRef.current.position.x = lipXOffset;
