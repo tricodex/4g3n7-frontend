@@ -147,7 +147,13 @@ export default function SimpleAgentAvatar({ className = '', compact = false }: S
         }
         
         .avatar-container.is-speaking #audio-visualizer {
-          opacity: 0.5;
+          opacity: 0.6; /* Increase visibility when speaking */
+        }
+        
+        @media (prefers-reduced-motion) {
+          #audio-visualizer {
+            opacity: 0.2;
+          }
         }
       `}</style>
       

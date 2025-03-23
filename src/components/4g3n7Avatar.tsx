@@ -1291,8 +1291,24 @@ const AgentAvatar = () => {
     const frequencyData = analyser.frequencyData as Uint8Array;
     const timeDomainData = analyser.timeDomainData as Uint8Array;
     
-    // If not active or no data available, clear the canvas and return
+    // If not active or no data available, still draw a minimal idle animation
     if (!(isSpeaking || localIsPlaying) || !frequencyData || !timeDomainData) {
+      // Draw minimal idle animation
+      context.beginPath();
+      context.strokeStyle = '#00aaff';
+      context.lineWidth = 2;
+      
+      // Create a gentle sine wave when idle
+      for (let x = 0; x < width; x += 1) {
+        const y = height / 2 + Math.sin(x / 50 + Date.now() / 1000) * 5;
+        if (x === 0) {
+          context.moveTo(x, y);
+        } else {
+          context.lineTo(x, y);
+        }
+      }
+      
+      context.stroke();
       return;
     }
     
