@@ -109,14 +109,32 @@ export default function VoiceButton({ text, className = '' }: VoiceButtonProps) 
         window.debugAnimateMouth(isLoading);
       }
       
-      // Double attempt with timeout as a failsafe
-      setTimeout(() => {
-        if ('debugAnimateMouth' in window) {
-          console.log(`🎤 Delayed retry animation with ${isLoading}`);
-          // @ts-ignore
-          window.debugAnimateMouth(isLoading);
+      // Multiple attempts with increasing timeouts as a failsafe
+      // This helps ensure the animation is triggered even if there are timing issues
+      const retryTimes = [50, 100, 250, 500];
+      retryTimes.forEach(delay => {
+        setTimeout(() => {
+          if ('debugAnimateMouth' in window) {
+            console.log(`🎤 Delayed retry animation (${delay}ms) with ${isLoading}`);
+            // @ts-ignore
+            window.debugAnimateMouth(isLoading);
+          }
+        }, delay);
+      });
+      
+      // Add a class to the DOM for CSS-based animation fallback
+      try {
+        const avatarContainer = document.querySelector('.avatar-container');
+        if (avatarContainer) {
+          if (isLoading) {
+            avatarContainer.classList.add('is-speaking');
+          } else {
+            avatarContainer.classList.remove('is-speaking');
+          }
         }
-      }, 100);
+      } catch (err) {
+        console.error('Error updating CSS animation class:', err);
+      }
     }
   }, [isLoading, setIsSpeaking]); // IMPORTANT: Remove isSpeaking from dependencies!
   

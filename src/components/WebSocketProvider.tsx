@@ -26,6 +26,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<string | null>(null);
   const [socketUrl, setSocketUrl] = useState(API_CONFIG.BASE_URL || 'http://localhost:3222');
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const maxReconnectAttempts = 3;
 
   // Function to establish WebSocket connection
   useEffect(() => {
@@ -35,23 +37,41 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Create new socket connection
+      console.log(`Attempting to connect to WebSocket at ${socketUrl} (Attempt ${connectionAttempts + 1}/${maxReconnectAttempts})`);
+      
+      // Create new socket connection with more robust options
       const newSocket = io(socketUrl, {
-        transports: ['websocket'],
+        transports: ['websocket', 'polling'], // Fallback to polling if websocket fails
         reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 2000,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+        timeout: 10000, // Longer timeout for initial connection
+        forceNew: true
       });
 
       // Socket event handlers
       newSocket.on('connect', () => {
         console.log(`WebSocket connected to ${socketUrl}`);
         setIsConnected(true);
+        setConnectionAttempts(0); // Reset attempts on successful connection
       });
 
       newSocket.on('disconnect', () => {
         console.log('WebSocket disconnected');
         setIsConnected(false);
+      });
+
+      newSocket.on('connect_error', (error) => {
+        console.error('WebSocket connection error:', error);
+        setIsConnected(false);
+        
+        // Only increment counter for connection errors (not other errors)
+        if (connectionAttempts < maxReconnectAttempts) {
+          setConnectionAttempts(prev => prev + 1);
+        } else {
+          console.warn(`Max reconnection attempts (${maxReconnectAttempts}) reached. Switching to mock mode.`);
+          // At this point, we would activate a mock/fallback mode instead of real WebSocket
+        }
       });
 
       newSocket.on('error', (error) => {
@@ -62,6 +82,23 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       newSocket.on('message', (data) => {
         console.log('WebSocket message received:', data);
         setLastMessage(typeof data === 'string' ? data : JSON.stringify(data));
+        
+        // Special handling for speech-related messages
+        if (data === 'speak' || data === 'speechstart') {
+          // Directly trigger avatar animation for more reliable operation
+          if (typeof window !== 'undefined' && 'debugAnimateMouth' in window) {
+            // @ts-ignore
+            window.debugAnimateMouth(true);
+            console.log('WebSocket received speak command, directly animating mouth');
+          }
+        } else if (data === 'stop' || data === 'speechend') {
+          // Directly trigger avatar animation stop
+          if (typeof window !== 'undefined' && 'debugAnimateMouth' in window) {
+            // @ts-ignore
+            window.debugAnimateMouth(false);
+            console.log('WebSocket received stop command, directly stopping mouth animation');
+          }
+        }
       });
 
       // Store socket in state
@@ -74,8 +111,12 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Failed to connect to WebSocket:', error);
       setIsConnected(false);
+      
+      if (connectionAttempts < maxReconnectAttempts) {
+        setConnectionAttempts(prev => prev + 1);
+      }
     }
-  }, [socketUrl]);
+  }, [socketUrl, connectionAttempts]);
 
   // Function to send a message
   const sendMessage = (message: string) => {

@@ -1,97 +1,91 @@
-// DISABLED_MockSocketProvider.tsx - Not used in E2E testing
-// Original mock provider preserved for reference only
+'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useAvatarStore } from '@/lib/avatarStore';
 
-// Define the socket context type
-export type WebSocketContextType = {
+// Mock WebSocket provider for fallback when real WebSockets fail
+
+// Define the WebSocket context type - same as in WebSocketProvider
+export type MockSocketContextType = {
   isConnected: boolean;
-  events: any[];
-  clearEvents: () => void;
-  socket: any | null;
+  lastMessage: string | null;
+  sendMessage: (message: string) => void;
+  setSocketUrl: (url: string) => void;
 };
 
 // Create the context with default values
-const WebSocketContext = createContext<WebSocketContextType>({
-  isConnected: false,
-  events: [],
-  clearEvents: () => {},
-  socket: null
+const MockSocketContext = createContext<MockSocketContextType>({
+  isConnected: true, // Always "connected" in mock mode
+  lastMessage: null,
+  sendMessage: () => {},
+  setSocketUrl: () => {},
 });
 
-// Custom hook to use the WebSocket context
-export const useWebSocket = () => useContext(WebSocketContext);
+// Mock WebSocket Provider component
+export function MockSocketProvider({ children }: { children: ReactNode }) {
+  const [lastMessage, setLastMessage] = useState<string | null>(null);
+  const { setIsSpeaking } = useAvatarStore();
+  
+  // Function to send a mock message
+  const sendMessage = (message: string) => {
+    console.log('MockSocket: Message sent:', message);
+    setLastMessage(message);
+    
+    // Special handling for speech commands
+    if (message === 'speak' || message === 'speechstart') {
+      setIsSpeaking(true);
+      // Direct animation
+      if (typeof window !== 'undefined' && 'debugAnimateMouth' in window) {
+        // @ts-ignore
+        window.debugAnimateMouth(true);
+      }
+    } else if (message === 'stop' || message === 'speechend') {
+      setIsSpeaking(false);
+      // Direct animation
+      if (typeof window !== 'undefined' && 'debugAnimateMouth' in window) {
+        // @ts-ignore
+        window.debugAnimateMouth(false);
+      }
+    }
+  };
 
-// Define props for the WebSocket provider component
-interface MockSocketProviderProps {
-  children: ReactNode;
-  autoConnect?: boolean;
-  mockEvents?: any[];
+  // Context provider value
+  const contextValue: MockSocketContextType = {
+    isConnected: true, // Always connected in mock mode
+    lastMessage,
+    sendMessage,
+    setSocketUrl: (url) => console.log('MockSocket: URL set to', url),
+  };
+
+  // Set up a demo script to simulate interactions
+  useEffect(() => {
+    // Show the user this is a mock provider
+    console.log('MockSocketProvider initialized - WebSocket fallback mode active');
+    
+    // Automatically animate the mouth every 5 seconds
+    const interval = setInterval(() => {
+      // Toggle speaking state
+      const isSpeaking = useAvatarStore.getState().isSpeaking;
+      setIsSpeaking(!isSpeaking);
+      
+      // Direct animation
+      if (typeof window !== 'undefined' && 'debugAnimateMouth' in window) {
+        // @ts-ignore
+        window.debugAnimateMouth(!isSpeaking);
+      }
+      
+      console.log('MockSocket: Auto-toggling speaking state:', !isSpeaking);
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <MockSocketContext.Provider value={contextValue}>
+      {children}
+    </MockSocketContext.Provider>
+  );
 }
 
-// WebSocket provider component
-export const MockSocketProvider: React.FC<MockSocketProviderProps> = ({ 
-  children, 
-  autoConnect = true,
-  mockEvents = []
-}) => {
-  const [isConnected, setIsConnected] = useState<boolean>(autoConnect);
-  const [events, setEvents] = useState<any[]>(mockEvents);
-  const [socket, setSocket] = useState<any | null>(null);
-
-  // Setup mock event handler for custom events
-  useEffect(() => {
-    const handleSocketConnected = () => {
-      setIsConnected(true);
-    };
-    
-    const handleSocketDisconnected = () => {
-      setIsConnected(false);
-    };
-    
-    const handleMockEvent = (event: CustomEvent) => {
-      if (event.detail) {
-        setEvents(prev => [...prev, event.detail]);
-      }
-    };
-    
-    // Add event listeners
-    window.addEventListener('socketConnected', handleSocketConnected);
-    window.addEventListener('socketDisconnected', handleSocketDisconnected);
-    window.addEventListener('mockSocketEvent', handleMockEvent as EventListener);
-    
-    // Mock socket object
-    const mockSocket = {
-      connected: autoConnect,
-      emit: (event: string, data: any) => {
-        console.log('Mock socket emit:', event, data);
-        // Add the emitted event to the events array
-        setEvents(prev => [...prev, { type: event, data, direction: 'outgoing' }]);
-        return true;
-      }
-    };
-    
-    setSocket(mockSocket);
-    
-    // Cleanup event listeners
-    return () => {
-      window.removeEventListener('socketConnected', handleSocketConnected);
-      window.removeEventListener('socketDisconnected', handleSocketDisconnected);
-      window.removeEventListener('mockSocketEvent', handleMockEvent as EventListener);
-    };
-  }, [autoConnect]);
-  
-  // Function to clear events
-  const clearEvents = () => {
-    setEvents([]);
-  };
-  
-  // Provide the WebSocket context value to children
-  return (
-    <WebSocketContext.Provider value={{ isConnected, events, clearEvents, socket }}>
-      {children}
-    </WebSocketContext.Provider>
-  );
-};
-
-export default MockSocketProvider; 
+// Custom hook to use the mock WebSocket context
+export const useMockSocket = () => useContext(MockSocketContext);
