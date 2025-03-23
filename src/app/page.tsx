@@ -8,16 +8,13 @@ import SimpleAgentAvatar from '@/components/SimpleAgentAvatar';
 export default function Home() {
   return (
     <main className="flex flex-col min-h-screen bg-gray-900 text-white">
-      {/* Top section with avatar (1/4 of page) */}
-      {/* Top section with avatar (1/4 of page) */}
-      {/* Only render the avatar on the dedicated agent page */}
-      
       {/* Bottom section with terminals in custom layout */}
       <section className="w-full flex-grow p-4 md:p-6 bg-gray-800 overflow-auto">
+        <h1 className="text-2xl font-bold mb-6 text-blue-400">4g3n7 Control Terminal</h1>
         
-        <div className="grid gap-6 md:grid-cols-4">
-          {/* Agent Terminals (2/4 - takes 2 columns) */}
-          <div className="md:col-span-2 h-[60vh] overflow-auto">
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-4">
+          {/* Agent Terminals (3/4 - takes 3 columns) */}
+          <div className="md:col-span-3 h-[60vh] overflow-auto order-1">
             <h2 className="text-xl font-semibold mb-4 text-blue-300">Agent Commands</h2>
             <Suspense fallback={
               <div className="h-full flex items-center justify-center">
@@ -28,8 +25,13 @@ export default function Home() {
             </Suspense>
           </div>
           
-          {/* TEE Attestation Terminal (1/4) */}
-          <div className="h-[60vh] overflow-auto">
+          {/* Avatar (1/4 - right side) */}
+          <div className="h-[60vh] order-2 bg-gray-900 rounded-lg overflow-hidden relative">
+            <SimpleAgentAvatar />
+          </div>
+          
+          {/* TEE Attestation Terminal (1/4) and Recall Memory (3/4) */}
+          <div className="md:col-span-1 h-[60vh] overflow-auto order-4">
             <h2 className="text-xl font-semibold mb-4 text-blue-300">TEE Attestation</h2>
             <Suspense fallback={
               <div className="h-full flex items-center justify-center">
@@ -40,12 +42,11 @@ export default function Home() {
             </Suspense>
           </div>
           
-          {/* Recall Memory Viewer (1/4) */}
-          <div className="h-[60vh] overflow-auto">
+          <div className="md:col-span-3 h-[60vh] overflow-auto order-3">
             <h2 className="text-xl font-semibold mb-4 text-blue-300">Recall Memory</h2>
             <Suspense fallback={
               <div className="h-full flex items-center justify-center">
-                <div className="animate-pulse text-blue-400">Loading terminal...</div>
+                <div className="animate-pulse text-blue-400">Loading memory viewer...</div>
               </div>
             }>
               <RecallMemoryViewer />

@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import AvatarCard from './AvatarCard';
+import VoiceButton from './VoiceButton';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -197,36 +199,49 @@ export function AgentTerminals() {
         </TabsContent>
         
         <TabsContent value="commands" className="flex flex-col h-full px-4 mt-0">
-          <ScrollArea className="h-[calc(100%-5rem)] font-mono text-sm bg-black/50 rounded-md p-3 mb-2">
-            <div ref={commandsTerminalRef}>
-              {terminals.commands.map((message, index) => (
-                <div key={index} className={`mb-1 ${getMessageColorClass(message.type)}`}>
-                  {message.type !== 'user' && (
-                    <span className="text-gray-500">[{formatTimestamp(message.timestamp)}]</span>
-                  )}{' '}
-                  {message.content}
+          <div className="flex flex-row gap-4 mb-2">
+            <div className="flex-grow">
+              <ScrollArea className="h-[calc(100%-5rem)] font-mono text-sm bg-black/50 rounded-md p-3 mb-2">
+                <div ref={commandsTerminalRef}>
+                  {terminals.commands.map((message, index) => (
+                    <div key={index} className={`mb-1 flex items-start ${getMessageColorClass(message.type)}`}>
+                      <div className="flex-grow">
+                        {message.type !== 'user' && (
+                          <span className="text-gray-500">[{formatTimestamp(message.timestamp)}]</span>
+                        )}{' '}
+                        {message.content}
+                      </div>
+                      {message.type !== 'user' && (
+                        <VoiceButton text={message.content} className="ml-2 flex-shrink-0" />
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </ScrollArea>
+              
+              <form onSubmit={handleCommandSubmit} className="flex space-x-2">
+                <Textarea
+                  value={command}
+                  onChange={(e) => setCommand(e.target.value)}
+                  placeholder="Enter command..."
+                  className="flex-1 font-mono h-[3rem] min-h-[3rem] px-3 py-2 bg-black/30 border-0 focus-visible:ring-1 focus-visible:ring-blue-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleCommandSubmit(e);
+                    }
+                  }}
+                />
+                <Button type="submit" className="h-[3rem]">
+                  Send
+                </Button>
+              </form>
             </div>
-          </ScrollArea>
-          
-          <form onSubmit={handleCommandSubmit} className="flex space-x-2">
-            <Textarea
-              value={command}
-              onChange={(e) => setCommand(e.target.value)}
-              placeholder="Enter command..."
-              className="flex-1 font-mono h-[3rem] min-h-[3rem] px-3 py-2 bg-black/30 border-0 focus-visible:ring-1 focus-visible:ring-blue-500"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleCommandSubmit(e);
-                }
-              }}
-            />
-            <Button type="submit" className="h-[3rem]">
-              Send
-            </Button>
-          </form>
+            
+            <div className="w-48 h-48 shrink-0">
+              <AvatarCard />
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </Card>
