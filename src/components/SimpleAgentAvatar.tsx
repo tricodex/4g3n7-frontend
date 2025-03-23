@@ -132,6 +132,23 @@ export default function SimpleAgentAvatar({ className = '', compact = false }: S
           0% { opacity: 0.5; transform: scale(1); }
           100% { opacity: 1; transform: scale(1.2); }
         }
+        
+        /* Style the audio visualizer to appear behind the avatar */
+        #audio-visualizer {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 0;
+          opacity: 0.3;
+          pointer-events: none;
+          transition: opacity 0.3s ease;
+        }
+        
+        .avatar-container.is-speaking #audio-visualizer {
+          opacity: 0.5;
+        }
       `}</style>
       
       <AgentAvatar />

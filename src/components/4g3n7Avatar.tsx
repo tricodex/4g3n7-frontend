@@ -382,7 +382,7 @@ const AgentAvatar = () => {
     // Keep state flag to prevent duplicate events
     let legacyIsPlaying = false;
     
-    const handleSpeechStart = (e) => {
+    const handleSpeechStart = (e: any) => {
       console.log('4g3n7Avatar: Received speechstart event from legacy system', e);
       if (!legacyIsPlaying) {
         legacyIsPlaying = true;
@@ -403,9 +403,13 @@ const AgentAvatar = () => {
     const handleSpeechEnd = () => {
       console.log('4g3n7Avatar: Received speechend event from legacy system');
       if (legacyIsPlaying) {
-        legacyIsPlaying = false;
-        // Only update local component state, not Zustand (to avoid cycles)
-        setLocalIsPlaying(false);
+        // Add a delay before stopping the mouth animation
+        // This ensures the mouth continues moving until the sound fully stops
+        setTimeout(() => {
+          legacyIsPlaying = false;
+          // Only update local component state, not Zustand (to avoid cycles)
+          setLocalIsPlaying(false);
+        }, 500); // 500ms delay to account for audio trailing off
       }
     };
     
@@ -414,7 +418,7 @@ const AgentAvatar = () => {
     window.addEventListener('speechend', handleSpeechEnd);
     
     // Also listen for message events
-    const handleMessage = (event) => {
+    const handleMessage = (event: { data: string; }) => {
       if (event.data === 'speechstart') {
         handleSpeechStart(event);
       } else if (event.data === 'speechend') {
@@ -1266,14 +1270,101 @@ const AgentAvatar = () => {
     };
   };
   
-  // Update audio visualizer - this function is no longer needed but we'll keep an empty version
-  // in case it's still called somewhere
+  // Update audio visualizer function to implement the requested visualization
   const updateVisualizer = (analyser: AnalyserNode & { 
     frequencyData?: Uint8Array; 
     timeDomainData?: Uint8Array 
   }, audioData: AudioData) => {
-    // We don't need canvas visualization anymore
-    return;
+    // We need a canvas for visualization
+    const visualizerCanvas = document.getElementById('audio-visualizer') as HTMLCanvasElement;
+    if (!visualizerCanvas) return;
+    
+    const context = visualizerCanvas.getContext('2d');
+    if (!context) return;
+    
+    const width = visualizerCanvas.width;
+    const height = visualizerCanvas.height;
+    
+    // Clear previous frame
+    context.clearRect(0, 0, width, height);
+    
+    const frequencyData = analyser.frequencyData as Uint8Array;
+    const timeDomainData = analyser.timeDomainData as Uint8Array;
+    
+    // If not active or no data available, clear the canvas and return
+    if (!(isSpeaking || localIsPlaying) || !frequencyData || !timeDomainData) {
+      return;
+    }
+    
+    // Define colors based on current mood
+    const moodVisualColors = {
+      neutral: { primary: '#00aaff', secondary: '#003366' },
+      confident: { primary: '#00ff88', secondary: '#004422' },
+      analytical: { primary: '#ff00ff', secondary: '#330033' },
+      alert: { primary: '#ff5500', secondary: '#331100' }
+    };
+    
+    const colors = moodVisualColors[mood] || moodVisualColors.neutral;
+    
+    // Create gradient for bars
+    const gradient = context.createLinearGradient(0, height, 0, 0);
+    gradient.addColorStop(0, colors.secondary);
+    gradient.addColorStop(1, colors.primary);
+    
+    // Create frequency visualization
+    const bufferLength = frequencyData.length;
+    const barWidth = width / (bufferLength * 0.5); // Use only 50% of frequencies for better visualization
+    
+    // Draw frequency bars
+    context.fillStyle = gradient;
+    
+    for (let i = 0; i < bufferLength * 0.5; i++) {
+      const value = frequencyData[i];
+      const percent = value / 256;
+      const barHeight = height * percent * 0.9; // 90% of height max
+      
+      // Add a bit of horizontal blur for smoother visualization
+      context.globalAlpha = 0.7;
+      context.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
+      
+      // Add a brighter center to each bar
+      context.globalAlpha = 0.9;
+      context.fillRect(i * barWidth + barWidth * 0.25, height - barHeight, barWidth * 0.5, barHeight);
+    }
+    
+    // Reset global alpha
+    context.globalAlpha = 1.0;
+    
+    // Add waveform on top
+    context.beginPath();
+    context.lineWidth = 2;
+    context.strokeStyle = colors.primary;
+    
+    // Draw time domain waveform
+    const sliceWidth = width / timeDomainData.length;
+    let x = 0;
+    
+    for (let i = 0; i < timeDomainData.length; i++) {
+      const v = timeDomainData[i] / 128.0;
+      const y = (v * height / 4) + (height / 2);
+      
+      if (i === 0) {
+        context.moveTo(x, y);
+      } else {
+        context.lineTo(x, y);
+      }
+      
+      x += sliceWidth;
+    }
+    
+    context.lineTo(width, height / 2);
+    context.stroke();
+    
+    // Add visualization glow effect
+    context.shadowBlur = 10;
+    context.shadowColor = colors.primary;
+    context.stroke();
+    context.shadowBlur = 0;
   };
   
   // Animate avatar based on audio input
@@ -1412,6 +1503,13 @@ const AgentAvatar = () => {
   
   return (
     <div className="flex w-full h-full">
+      {/* Audio visualizer canvas - positioned behind the avatar */}
+      <canvas 
+        id="audio-visualizer" 
+        className="absolute top-0 left-0 w-full h-full z-0 opacity-40"
+        width={800}
+        height={600}
+      ></canvas>
       <div className="w-full h-full">
         <div className="w-full h-full" ref={mountRef}></div>
       </div>

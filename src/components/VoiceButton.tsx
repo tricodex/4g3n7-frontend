@@ -87,7 +87,15 @@ export default function VoiceButton({ text, className = '' }: VoiceButtonProps) 
     console.log(`🎤 VoiceButton: Speech state changed to ${isLoading ? 'speaking' : 'not speaking'}`);
     
     // Update the store directly from the speech synthesis state
-    setIsSpeaking(isLoading);
+    // Add delay when stopping speech to match audio falloff
+    if (isLoading) {
+      setIsSpeaking(true);
+    } else {
+      // Add delay before stopping animation
+      setTimeout(() => {
+        setIsSpeaking(false);
+      }, 500); // 500ms delay to account for audio trailing off
+    }
     
     // Legacy support for non-store components
     if (typeof window !== 'undefined') {
@@ -105,8 +113,16 @@ export default function VoiceButton({ text, className = '' }: VoiceButtonProps) 
       // Direct animation via debug function (MOST RELIABLE)
       if ('debugAnimateMouth' in window) {
         console.log(`🎤 Using direct debug function with ${isLoading}`);
-        // @ts-ignore
-        window.debugAnimateMouth(isLoading);
+        if (isLoading) {
+          // @ts-ignore
+          window.debugAnimateMouth(true);
+        } else {
+          // Add delay for stopping animation
+          setTimeout(() => {
+            // @ts-ignore
+            window.debugAnimateMouth(false);
+          }, 500); // Match the delay time
+        }
       }
       
       // Multiple attempts with increasing timeouts as a failsafe
@@ -116,8 +132,15 @@ export default function VoiceButton({ text, className = '' }: VoiceButtonProps) 
         setTimeout(() => {
           if ('debugAnimateMouth' in window) {
             console.log(`🎤 Delayed retry animation (${delay}ms) with ${isLoading}`);
-            // @ts-ignore
-            window.debugAnimateMouth(isLoading);
+            // Only apply immediate animation for speech start
+            // For speech end, add our delay to these retry timings
+            if (isLoading) {
+              // @ts-ignore
+              window.debugAnimateMouth(true);
+            } else if (delay >= 500) { // Only apply stop on later retries
+              // @ts-ignore
+              window.debugAnimateMouth(false);
+            }
           }
         }, delay);
       });
@@ -129,7 +152,10 @@ export default function VoiceButton({ text, className = '' }: VoiceButtonProps) 
           if (isLoading) {
             avatarContainer.classList.add('is-speaking');
           } else {
-            avatarContainer.classList.remove('is-speaking');
+            // Delay removal of class
+            setTimeout(() => {
+              avatarContainer.classList.remove('is-speaking');
+            }, 500);
           }
         }
       } catch (err) {

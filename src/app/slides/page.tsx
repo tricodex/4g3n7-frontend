@@ -494,13 +494,7 @@ export default function Home() {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <a 
-        href="/interactive_demo" 
-        className="absolute top-6 right-6 z-10 bg-blue-800 text-white px-4 py-2 rounded-full shadow-md hover:bg-blue-700 transition-colors flex items-center"
-      >
-        <FiServer className="mr-2" />
-        Interactive Demo
-      </a>
+
       <AnimatePresence mode="wait">
         <Slide key={currentSlide}>
           {slideContent[currentSlide].content}
