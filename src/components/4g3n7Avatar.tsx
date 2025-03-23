@@ -1,5 +1,8 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
+
+// Singleton flag to prevent multiple instances
+let isInstanceMounted = false;
 import * as THREE from 'three';
 
 // Define types for audio data and refs
@@ -11,8 +14,9 @@ type AudioData = {
   volumeHistory: number[];
 };
 
-// Avatar component
+// Avatar component with singleton pattern
 const AgentAvatar = () => {
+  console.log('Initializing 3D Avatar - this should only happen once');
   const mountRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode & {
@@ -97,6 +101,15 @@ const AgentAvatar = () => {
 
   useEffect(() => {
     let animationFrameId: number = 0;
+    
+    // Prevent multiple instances
+    if (isInstanceMounted) {
+      console.warn('Avatar instance already exists. Prevented duplicate rendering.');
+      return () => {};
+    }
+    
+    // Mark instance as mounted
+    isInstanceMounted = true;
     
     // Initialize the scene
     const initialize = () => {
@@ -209,6 +222,9 @@ const AgentAvatar = () => {
           console.error("Error during cleanup:", error);
         }
       }
+      
+      // Reset the singleton flag when unmounted
+      isInstanceMounted = false;
       
       // Clean up audio resources
       if (mediaStreamRef.current) {

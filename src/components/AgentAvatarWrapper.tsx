@@ -1,13 +1,9 @@
 'use client';
 
-import dynamic from 'next/dynamic';
+import SimpleAgentAvatar from './SimpleAgentAvatar';
 
-// Dynamic import with SSR disabled for Three.js component
-const AgentAvatar = dynamic(
-  () => import('./4g3n7Avatar'),
-  { ssr: false }
-);
-
+// Redirecting to the non-dynamic version
 export default function AgentAvatarWrapper() {
-  return <AgentAvatar />;
+  console.warn('AgentAvatarWrapper is deprecated. Use SimpleAgentAvatar instead');
+  return null;
 }
