@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useAvatarStore } from '@/lib/avatarStore';
+import type { WebSocketEvent } from '@/services/WebSocketService'; // Import the type
 
 // Mock WebSocket provider for fallback when real WebSockets fail
 

@@ -1,36 +1,119 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 4g3n7 - Secure Trading Agent in TEE
+
+This project combines a Next.js 15 frontend with a Marlin CVM (Confidential Virtual Machine) backend to create a secure, attested trading agent system. The agent runs in a Trusted Execution Environment (TEE) with cryptographic verification.
+
+## Architecture
+
+### Frontend (Next.js 15)
+- Modern app router architecture
+- 3D Avatar with audio visualization and speech synthesis
+- Real-time WebSocket communication
+- Trading interface with market data visualization
+
+### Backend (Marlin CVM)
+- Node.js server running in TEE environment
+- WebSocket service for real-time updates
+- AgentKit integration for wallet and trading operations
+- Attestation verification for security guarantees
 
 ## Getting Started
 
-First, run the development server:
+First, install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+bun install
+```
+
+Then run the development server:
+
+```bash
 bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### WebSocket Integration
+The project includes a complete WebSocket implementation:
 
-## Learn More
+- `WebSocketService.ts` - Core service for Socket.IO communication
+- `WebSocketProvider.tsx` - React context provider for app-wide socket access
+- UI components for displaying real-time data and connection status
 
-To learn more about Next.js, take a look at the following resources:
+### 3D Avatar
+A reactive Three.js-based avatar that:
+- Responds to speech with mouth animations
+- Visualizes audio with waveform animations
+- Changes appearance based on agent mood
+- Uses audio analysis for realistic movements
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Trading Interface
+- Real-time market data visualization
+- Trade execution form
+- Position tracking
+- Transaction history
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## TEE Attestation
 
-## Deploy on Vercel
+The backend runs in a Trusted Execution Environment (TEE) using Marlin CVM:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- PCR value verification ensures code integrity
+- User data digest validation for application verification
+- Job ID verification for instance specificity
+- Signature validation with timestamp checking
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## File Structure
+
+```
+src/
+├── app/              # Next.js 15 app router pages
+├── components/       # React components
+│   ├── 4g3n7Avatar.tsx         # 3D avatar implementation
+│   ├── ui/                     # UI components
+│   │   ├── RealTimeTrades.tsx  # Real-time trade display
+│   │   └── WebSocketStatus.tsx # Connection status indicator
+│   └── providers/
+│       └── WebSocketProvider.tsx # WebSocket context provider
+├── services/
+│   ├── ApiClient.ts            # REST API client
+│   └── WebSocketService.ts     # WebSocket client service
+└── lib/
+    └── avatarStore.ts          # Zustand state store
+```
+
+## Development
+
+This project uses:
+- Bun 1.2 as the JavaScript runtime
+- Next.js 15 with React 19
+- Three.js for 3D visualization
+- Socket.IO for real-time communication
+- Zustand for state management
+
+## Deployment
+
+For production deployment:
+
+1. Build the application:
+```bash
+bun run build
+```
+
+2. Deploy to the Marlin CVM environment:
+```bash
+./deploy-to-marlin.sh
+```
+
+3. Verify attestation:
+```bash
+./verify-attestation.sh
+```
+
+## Key Technologies
+
+- **Next.js 15** - React framework with app router
+- **Three.js** - 3D visualization library
+- **Socket.IO** - Real-time bidirectional communication
+- **Marlin CVM** - Confidential Virtual Machine for TEE
+- **AgentKit** - Framework for autonomous agents

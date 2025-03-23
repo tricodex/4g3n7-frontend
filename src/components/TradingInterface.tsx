@@ -33,8 +33,9 @@ import { toast } from "sonner";
 
 // Import any additional components or icons needed
 import { CheckCircle, AlertTriangle, Info, AlertCircle } from 'lucide-react';
-import { useWebSocket } from './WebSocketProvider';
+import { useWebSocket } from '@/providers/WebSocketProvider'; // Updated import path
 import apiClient from '../services/ApiClient';
+import { formatTime } from '@/lib/formatters';
 
 // Define types
 type TradeType = 'swap' | 'liquidity' | 'stake' | 'limit';
@@ -534,7 +535,7 @@ export function TradingInterface() {
                   {message.type === 'error' && <AlertCircle className="h-4 w-4 mr-2 mt-0.5 text-red-500" />}
                   <div>
                     <span className="text-xs text-muted-foreground">
-                      {message.timestamp.toLocaleTimeString()}
+                      {formatTime(message.timestamp)}
                     </span>
                     <p className="text-sm">{message.content}</p>
                   </div>

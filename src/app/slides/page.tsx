@@ -52,7 +52,7 @@ const slideContent = [
         />
         <h2 className="text-3xl font-bold text-white">Secure Autonomous Trading with Trusted Execution Environments</h2>
         <p className="text-xl text-gray-300">
-          4g3n7 Auto Trader combines AgentKit's wallet capabilities with Marlin's TEE infrastructure
+          4g3n7 Auto Trader combines AgentKit&apos;s wallet capabilities with Marlin&apos;s TEE infrastructure
           to create a cryptographically verified trading system with attestation guarantees.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-4">
@@ -105,9 +105,9 @@ const slideContent = [
             <div className="h-12 w-12 bg-purple-900 rounded-full flex items-center justify-center mb-4">
               <FiCpu className="text-purple-300 text-xl" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">Marlin CVM Integration</h3>
+            <h3 className="text-xl font-bold text-white mb-2">Two-Tier Architecture</h3>
             <p className="text-gray-300">
-              Runs in a verified Confidential Virtual Machine with attestation verification.
+              Attestation service in Marlin CVM with full backend on traditional VPS for optimal security.
             </p>
           </div>
           
@@ -125,9 +125,9 @@ const slideContent = [
             <div className="h-12 w-12 bg-yellow-900 rounded-full flex items-center justify-center mb-4">
               <FiServer className="text-yellow-300 text-xl" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">API Interface</h3>
+            <h3 className="text-xl font-bold text-white mb-2">WebSocket Integration</h3>
             <p className="text-gray-300">
-              WebSocket and REST APIs with attestation verification endpoints.
+              Real-time updates via Socket.IO with attestation-verified data streams.
             </p>
           </div>
           
@@ -137,7 +137,7 @@ const slideContent = [
             </div>
             <h3 className="text-xl font-bold text-white mb-2">Attestation System</h3>
             <p className="text-gray-300">
-              Verifies PCR values and user data digests to ensure code integrity.
+              Verifies specific ARM64 PCR values and Docker digest values for integrity.
             </p>
           </div>
         </div>
@@ -183,35 +183,32 @@ The expected PCR measurements for ARM64 instances have been verified:
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
           <div className="bg-gray-900 p-6 rounded-xl shadow-md border border-gray-800">
-            <h3 className="text-xl font-bold text-white mb-4">Attestation Verification</h3>
+            <h3 className="text-xl font-bold text-white mb-4">Two-Tier Architecture</h3>
             <p className="text-gray-300 mb-4">
-              Our system uses Marlin's TEE attestation to verify the integrity and trustworthiness
-              of the trading environment. This ensures all code runs in a secure enclave.
+              Our system uses a two-tier architecture with a minimal attestation service in Marlin CVM
+              and a full backend server on a traditional VPS that verifies attestations before operations.
             </p>
             <div className="mt-4 text-sm bg-gray-950 p-3 rounded-md overflow-x-auto text-white">
               <code>
-                {`// Verify PCR values
-function verifyPCRValues(attestationData) {
-  for (const pcr of Object.keys(EXPECTED_PCR_VALUES)) {
-    const expectedValue = EXPECTED_PCR_VALUES[pcr];
-    const actualValue = attestationData.pcrs[pcr];
-    
-    if (expectedValue !== actualValue) {
-      return false; // Verification failed
-    }
-  }
-  return true; // All PCRs verified
-}`}
+                {`// Deploy Attestation Service on Marlin CVM
+./minimal-deploy.sh
+
+// Verify Attestation
+./arbitrum-attestation.sh
+
+// Run Backend with Attestation Integration
+export ATTESTATION_FILE=./attestation-data.json
+export ENABLE_ATTESTATION=true
+bun run start`}
               </code>
             </div>
           </div>
           
           <div className="bg-gray-900 p-6 rounded-xl shadow-md border border-gray-800">
-            <h3 className="text-xl font-bold text-white mb-4">User Data Verification</h3>
+            <h3 className="text-xl font-bold text-white mb-4">Verification Details</h3>
             <p className="text-gray-300 mb-4">
-              Beyond PCR values, we verify the application digest, ensuring the exact
-              expected code is running in the environment. This provides a comprehensive
-              verification of the entire system.
+              Our system verifies both PCR values and Docker digest values to ensure
+              complete integrity of the execution environment, with multiple verification layers.
             </p>
             <ul className="space-y-2 text-gray-300">
               <li className="flex items-start">
@@ -224,15 +221,104 @@ function verifyPCRValues(attestationData) {
                 <div className="flex-shrink-0 h-6 w-6 rounded-full bg-green-900 flex items-center justify-center mt-1">
                   <FiCheck className="text-green-300 text-sm" />
                 </div>
-                <span className="ml-2">Job ID verification for instance specificity</span>
+                <span className="ml-2">Offline attestation verification capability</span>
               </li>
               <li className="flex items-start">
                 <div className="flex-shrink-0 h-6 w-6 rounded-full bg-green-900 flex items-center justify-center mt-1">
                   <FiCheck className="text-green-300 text-sm" />
                 </div>
-                <span className="ml-2">Signature validation with timestamp checking</span>
+                <span className="ml-2">Attestation freshness with timestamp checking</span>
               </li>
             </ul>
+          </div>
+        </div>
+      </div>
+    ),
+  },
+  
+  // Add a WebSocket Implementation Slide
+  {
+    title: "WebSocket Integration",
+    subtitle: "Real-time Trading Updates",
+    content: (
+      <div className="flex flex-col items-center max-w-4xl">
+        <h2 className="text-3xl font-bold mb-10 text-white">WebSocket Integration</h2>
+        
+        <div className="grid grid-cols-1 gap-8 w-full">
+          <div className="bg-gray-900 p-6 rounded-xl shadow-md border border-gray-800">
+            <h3 className="text-xl font-bold text-white mb-4">Real-Time Trading Updates</h3>
+            <div className="text-sm bg-gray-950 p-4 rounded-md overflow-x-auto text-white mb-4">
+              <code>
+{`// Backend WebSocket Server Configuration
+this.io = new SocketIOServer(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Frontend connection setup
+const WEBSOCKET_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3222";`}
+              </code>
+            </div>
+            <p className="text-gray-300">
+              Our WebSocket implementation provides real-time trading updates with attestation verification,
+              ensuring all data comes from the verified trading environment.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gray-900 p-6 rounded-xl shadow-md border border-gray-800">
+              <div className="flex items-center mb-4">
+                <div className="h-10 w-10 bg-blue-900 rounded-full flex items-center justify-center">
+                  <FiServer className="text-blue-300" />
+                </div>
+                <h3 className="ml-3 text-xl font-bold text-white">Socket.IO Backend</h3>
+              </div>
+              <p className="text-gray-300">
+                Socket.IO server implementation with secure CORS settings and
+                subscription management for different trading topics.
+              </p>
+            </div>
+            
+            <div className="bg-gray-900 p-6 rounded-xl shadow-md border border-gray-800">
+              <div className="flex items-center mb-4">
+                <div className="h-10 w-10 bg-purple-900 rounded-full flex items-center justify-center">
+                  <FiActivity className="text-purple-300" />
+                </div>
+                <h3 className="ml-3 text-xl font-bold text-white">Event Broadcasting</h3>
+              </div>
+              <p className="text-gray-300">
+                Real-time broadcasting of trading events, market analysis data,
+                and system status including attestation verification.
+              </p>
+            </div>
+            
+            <div className="bg-gray-900 p-6 rounded-xl shadow-md border border-gray-800">
+              <div className="flex items-center mb-4">
+                <div className="h-10 w-10 bg-green-900 rounded-full flex items-center justify-center">
+                  <FiDatabase className="text-green-300" />
+                </div>
+                <h3 className="ml-3 text-xl font-bold text-white">React Context Integration</h3>
+              </div>
+              <p className="text-gray-300">
+                React context provider for WebSocket functionality with
+                component lifecycle management and connection status handling.
+              </p>
+            </div>
+            
+            <div className="bg-gray-900 p-6 rounded-xl shadow-md border border-gray-800">
+              <div className="flex items-center mb-4">
+                <div className="h-10 w-10 bg-red-900 rounded-full flex items-center justify-center">
+                  <FiShield className="text-red-300" />
+                </div>
+                <h3 className="ml-3 text-xl font-bold text-white">Verified Data Streams</h3>
+              </div>
+              <p className="text-gray-300">
+                All WebSocket data is verified against attestation signatures,
+                ensuring trading data comes from the verified environment.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -419,7 +505,7 @@ function verifyPCRValues(attestationData) {
             cryptographic guarantees rather than blind trust.
           </p>
           <p className="text-gray-500">
-            TEEfecta Hackathon - AgentKit & Marlin TEE Integration
+            Trifecta TEE EthGlobal Hackathon - AgentKit & Marlin TEE Integration
           </p>
         </div>
       </div>
@@ -485,7 +571,7 @@ export default function Home() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [currentSlide]);
+  }, [currentSlide, handleKeyDown]);
 
   return (
     <div 

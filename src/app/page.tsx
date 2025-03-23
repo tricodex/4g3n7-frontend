@@ -7,9 +7,9 @@ import SimpleAgentAvatar from '@/components/SimpleAgentAvatar';
 // This is the main page component that Next.js will render at the root route
 export default function Home() {
   return (
-    <main className="flex flex-col min-h-screen bg-gray-900 text-white">
+    <main className="flex flex-col min-h-screen bg-black text-white">
       {/* Bottom section with terminals in custom layout */}
-      <section className="w-full flex-grow p-4 md:p-6 bg-gray-800 overflow-auto">
+      <section className="w-full flex-grow p-4 md:p-6 bg-black overflow-auto">
         
         <div className="grid gap-6 grid-cols-1 md:grid-cols-5">
           {/* Agent Terminals (3/5 - 60% width) */}

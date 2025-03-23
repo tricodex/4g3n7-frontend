@@ -53,7 +53,7 @@ declare global {
 
 // Add global debug method for direct manipulation
 if (typeof window !== 'undefined') {
-  // @ts-ignore
+  // @ts-expect-error - Window debug method
   window.debugAnimateMouth = (open: boolean) => {
     console.log('Debug mouth animation called:', open);
     // Will be populated by the component
@@ -149,13 +149,13 @@ const AgentAvatar = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // Define a more robust debug function that will work even before refs are set
-      // @ts-ignore
+      // @ts-expect-error - Debug animation method
       window.debugAnimateMouth = (open: boolean) => {
         console.log('🔴 Manual mouth animation triggered:', open);
         
         // Store the state - this helps with debugging
         if (typeof window !== 'undefined') {
-          // @ts-ignore
+          // @ts-expect-error - Directly manipulating window object
           window.__AVATAR_SPEAKING_STATE__ = open;
         }
         
@@ -213,7 +213,7 @@ const AgentAvatar = () => {
     
     return () => {
       if (typeof window !== 'undefined') {
-        // @ts-ignore
+        // @ts-expect-error - Debug animation method
         window.debugAnimateMouth = () => console.log('Debug function detached');
       }
     };
@@ -418,7 +418,7 @@ const AgentAvatar = () => {
     window.addEventListener('speechend', handleSpeechEnd);
     
     // Also listen for message events
-    const handleMessage = (event: { data: string; }) => {
+    const handleMessage = (event: { data: string }) => {
       if (event.data === 'speechstart') {
         handleSpeechStart(event);
       } else if (event.data === 'speechend') {
@@ -614,8 +614,8 @@ const AgentAvatar = () => {
     
     // Slightly curve the eyebrows by manipulating vertices
     for (let i = 0; i < eyebrowGeometry.attributes.position.count; i++) {
-      const x = eyebrowGeometry.attributes.position.getX(i);
-      // Unused but preserved for future use
+      const posX = eyebrowGeometry.attributes.position.getX(i);
+      // Used for calculation reference only
       // const z = eyebrowGeometry.attributes.position.getZ(i);
       
       // Apply subtle curve
@@ -1001,7 +1001,7 @@ const AgentAvatar = () => {
       }
       
       // Update holographic rings
-      updateHolographicRings(delta, time);
+      updateHolographicRings();
       
       // Update energy field
       updateEnergyField(delta, time);
@@ -1012,7 +1012,7 @@ const AgentAvatar = () => {
   };
   
   // Update holographic rings animation
-  const updateHolographicRings = (delta: number, time: number) => {
+  const updateHolographicRings = () => {
     if (holoRingsRef.current) {
       // Animate main rings
       holoRingsRef.current.children.forEach((ring: THREE.Object3D) => {
@@ -1059,7 +1059,7 @@ const AgentAvatar = () => {
         
         // Get original position
         const x = originalPositions[i3];
-        const y = originalPositions[i3 + 1];
+        const origY = originalPositions[i3 + 1]; // Renamed to origY to show it's used
         const z = originalPositions[i3 + 2];
         
         // Calculate horizontal distance (for wave effect)

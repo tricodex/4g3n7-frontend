@@ -22,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatDateTime } from '@/lib/formatters';
 
 // Define types for memory entries
 type MemoryEntry = {
@@ -131,7 +132,7 @@ export function RecallMemoryViewer() {
   const formatTimestamp = (timestamp: string): string => {
     try {
       const date = new Date(timestamp);
-      return date.toLocaleString();
+      return formatDateTime(date);
     } catch (e) {
       return timestamp;
     }

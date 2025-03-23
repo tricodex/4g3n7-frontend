@@ -2,7 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { WebSocketProvider } from '@/components/WebSocketProvider';
+import { WebSocketProvider } from '@/providers/WebSocketProvider';
 import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
@@ -17,14 +17,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-gray-900 text-white">
+      <body className="bg-black text-white">
         <WebSocketProvider>
           <header className="w-full bg-black p-4 sticky top-0 z-50 border-b border-gray-800 flex justify-between items-center">
             <Link href="/" className="flex items-center space-x-2">
               <Image 
                 src="/437.png" 
                 alt="4g3n7 Logo" 
-                width={32} 
+                width={48} 
                 height={32} 
                 className="" 
               />

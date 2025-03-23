@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { formatTime } from '@/lib/formatters';
 
 // Correct type definition for TerminalMessage
 type TerminalMessage = {
@@ -162,18 +163,12 @@ export function AgentTerminals() {
   }, []);
   
   const formatTimestamp = (timestamp: Date): string => {
-    if (!isClient) return "--:--:--"; // Return placeholder during server rendering
-    
-    const hours = timestamp.getHours().toString().padStart(2, '0');
-    const minutes = timestamp.getMinutes().toString().padStart(2, '0');
-    const seconds = timestamp.getSeconds().toString().padStart(2, '0');
-    return `${hours}:${minutes}:${seconds}`;
+    return formatTime(timestamp);
   };
   
   return (
-    <Card className="h-full border-gray-700 bg-gray-900">
+    <Card className="max-h-full border-gray-700 bg-black">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Agent Terminals</CardTitle>
       </CardHeader>
       
       <Tabs defaultValue="logs" onValueChange={setActiveTerminalId} className="h-[calc(100%-3rem)]">
@@ -225,7 +220,7 @@ export function AgentTerminals() {
                   value={command}
                   onChange={(e) => setCommand(e.target.value)}
                   placeholder="Enter command..."
-                  className="flex-1 font-mono h-[3rem] min-h-[3rem] px-3 py-2 bg-black/30 border-0 focus-visible:ring-1 focus-visible:ring-blue-500"
+                  className="flex-1 text-white font-mono h-[3rem] min-h-[3rem] px-3 py-2 bg-black/30 border-0 focus-visible:ring-1 focus-visible:ring-blue-500"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
