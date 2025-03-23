@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Volume2, StopCircle } from "lucide-react";
 import { useSpeechSynthes } from '@lobehub/tts/react';
@@ -16,6 +16,21 @@ export default function VoiceButton({ text, className = '' }: VoiceButtonProps) 
   };
   
   const { isLoading, start, stop } = useSpeechSynthes(text, ttsOptions);
+  
+  // Emit custom events for avatar to listen to
+  useEffect(() => {
+    if (isLoading) {
+      // Dispatch event when speech starts
+      const startEvent = new Event('speechstart');
+      window.dispatchEvent(startEvent);
+      console.log('VoiceButton: Dispatched speechstart event');
+    } else {
+      // Dispatch event when speech ends
+      const endEvent = new Event('speechend');
+      window.dispatchEvent(endEvent);
+      console.log('VoiceButton: Dispatched speechend event');
+    }
+  }, [isLoading]);
   
   return (
     <Button 

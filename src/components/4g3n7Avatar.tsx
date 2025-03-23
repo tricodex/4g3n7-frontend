@@ -1,9 +1,16 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
-
-// Singleton flag to prevent multiple instances
-let isInstanceMounted = false;
 import * as THREE from 'three';
+
+// Use a global flag for the singleton pattern instead of module-level
+// This ensures it persists across hot reloads during development
+if (typeof window !== 'undefined' && !window.hasOwnProperty('avatarInstanceMounted')) {
+  Object.defineProperty(window, 'avatarInstanceMounted', {
+    value: false,
+    writable: true,
+    configurable: true
+  });
+}
 
 // Define types for audio data and refs
 type AudioData = {
@@ -14,7 +21,14 @@ type AudioData = {
   volumeHistory: number[];
 };
 
-// Avatar component with singleton pattern
+// Add global declaration for TypeScript
+declare global {
+  interface Window {
+    avatarInstanceMounted: boolean;
+  }
+}
+
+// Avatar component
 const AgentAvatar = () => {
   console.log('Initializing 3D Avatar - this should only happen once');
   const mountRef = useRef<HTMLDivElement>(null);
@@ -23,11 +37,8 @@ const AgentAvatar = () => {
     frequencyData?: Uint8Array;
     timeDomainData?: Uint8Array;
   }>(null);
-  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const fileReaderRef = useRef<FileReader | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   
+  // Three.js refs
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -41,17 +52,12 @@ const AgentAvatar = () => {
   const rightEyeRef = useRef<THREE.Mesh | null>(null);
   const energyFieldRef = useRef<THREE.Points | null>(null);
   const holoRingsRef = useRef<THREE.Group | null>(null);
-  const numberParticlesRef = useRef<THREE.Points | null>(null);
   
   const clockRef = useRef<THREE.Clock>(new THREE.Clock());
   
-  const [isUsingMicrophone, setIsUsingMicrophone] = useState(false);
-  const [audioLoaded, setAudioLoaded] = useState(false);
+  // Simplified state
   const [isPlaying, setIsPlaying] = useState(false);
-  const [status, setStatus] = useState('System ready');
-  const [isError, setIsError] = useState(false);
   const [mood, setMood] = useState<'neutral' | 'confident' | 'analytical' | 'alert'>('confident');
-  const [mode, setMode] = useState<'default' | 'trading'>('default');
   
   // Sound frequency bands
   const frequencyBands = {
@@ -102,17 +108,19 @@ const AgentAvatar = () => {
   useEffect(() => {
     let animationFrameId: number = 0;
     
-    // Prevent multiple instances
-    if (isInstanceMounted) {
+    // Prevent multiple instances using global flag
+    if (window.avatarInstanceMounted) {
       console.warn('Avatar instance already exists. Prevented duplicate rendering.');
       return () => {};
     }
     
     // Mark instance as mounted
-    isInstanceMounted = true;
+    window.avatarInstanceMounted = true;
+    console.log('Avatar singleton status: Instance mounting, avatarInstanceMounted =', window.avatarInstanceMounted);
     
     // Initialize the scene
     const initialize = () => {
+      console.log('Initializing 4g3n7 Avatar - Agent ready to respond to VoiceButton events');
       // Setup scene
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x050510);
@@ -160,9 +168,6 @@ const AgentAvatar = () => {
       // Set up audio
       setupAudio();
       
-      // Setup audio visualizer
-      setupVisualizer();
-      
       // Apply initial mood
       applyMood('confident');
       
@@ -188,32 +193,36 @@ const AgentAvatar = () => {
           const delta = clockRef.current.getDelta();
           const elapsedTime = clockRef.current.getElapsedTime();
           
+          // Debug animation frame
+          if (elapsedTime % 5 < 0.1) { // Log every ~5 seconds
+            console.log('4g3n7Avatar: Animation frame running, time:', elapsedTime.toFixed(2));
+            console.log('4g3n7Avatar: isPlaying state:', isPlaying);
+          }
+          
           // Update avatar animations
           updateAvatarAnimation(delta, elapsedTime);
           
-          // Update audio analysis
-          updateAudioAnalysis();
+          // Update audio analysis if available
+          if (analyserRef.current) {
+            updateAudioAnalysis();
+          }
           
           // Render the scene
           rendererRef.current.render(sceneRef.current, cameraRef.current);
+        } else {
+          console.warn('4g3n7Avatar: Missing required refs for animation');
         }
       };
       
+      // Start animation loop
+      console.log('4g3n7Avatar: Starting animation loop');
       animate();
-      
-      // Cleanup function
-      return () => {
-        window.removeEventListener('resize', handleResize);
-        cancelAnimationFrame(animationFrameId);
-        if (mountRef.current && rendererRef.current) {
-          mountRef.current.removeChild(rendererRef.current.domElement);
-        }
-      };
     };
     
     initialize();
     
     return () => {
+      console.log('Avatar cleanup triggered');
       cancelAnimationFrame(animationFrameId);
       if (mountRef.current && rendererRef.current) {
         try {
@@ -224,66 +233,40 @@ const AgentAvatar = () => {
       }
       
       // Reset the singleton flag when unmounted
-      isInstanceMounted = false;
+      window.avatarInstanceMounted = false;
+      console.log('Avatar singleton status: Instance unmounted, avatarInstanceMounted =', window.avatarInstanceMounted);
       
-      // Clean up audio resources
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
-      }
-      
+      // Clean up audio context
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
       }
     };
   }, []);
   
-  // Effect to handle mode changes
+  // Listen for speech synthesis events from the VoiceButton component
   useEffect(() => {
-    if (mode === 'trading') {
-      setStatus('Trading mode activated');
-      // Trading mode is handled in updateMoodAnimations
-      
-      // Move camera out slightly for better view of particles
-      if (cameraRef.current) {
-        // Animate camera position
-        const targetZ = 6.5;
-        let currentZ = cameraRef.current.position.z;
-        const animate = () => {
-          currentZ = currentZ + (targetZ - currentZ) * 0.05;
-          if (cameraRef.current) {
-            cameraRef.current.position.z = currentZ;
-          }
-          
-          if (Math.abs(currentZ - targetZ) > 0.01) {
-            requestAnimationFrame(animate);
-          }
-        };
-        animate();
-      }
-    } else {
-      // Default mode
-      setStatus('Default mode');
-      
-      // Reset camera position
-      if (cameraRef.current) {
-        const targetZ = 5;
-        let currentZ = cameraRef.current.position.z;
-        const animate = () => {
-          currentZ = currentZ + (targetZ - currentZ) * 0.05;
-          if (cameraRef.current) {
-            cameraRef.current.position.z = currentZ;
-          }
-          
-          if (Math.abs(currentZ - targetZ) > 0.01) {
-            requestAnimationFrame(animate);
-          }
-        };
-        animate();
-      }
-      
-      // If we have number particles, they'll be cleaned up in updateMoodAnimations
-    }
-  }, [mode]);
+    console.log('4g3n7Avatar: Setting up speech event listeners');
+    
+    const handleSpeechStart = () => {
+      console.log('4g3n7Avatar: Received speechstart event');
+      setIsPlaying(true);
+    };
+    
+    const handleSpeechEnd = () => {
+      console.log('4g3n7Avatar: Received speechend event');
+      setIsPlaying(false);
+    };
+    
+    // Listen for custom events that VoiceButton will dispatch
+    window.addEventListener('speechstart', handleSpeechStart);
+    window.addEventListener('speechend', handleSpeechEnd);
+    
+    return () => {
+      console.log('4g3n7Avatar: Removing speech event listeners');
+      window.removeEventListener('speechstart', handleSpeechStart);
+      window.removeEventListener('speechend', handleSpeechEnd);
+    };
+  }, []);
   
   // Setup lighting system
   const setupLights = () => {
@@ -747,25 +730,13 @@ const AgentAvatar = () => {
       analyser.connect(audioContext.destination);
       analyserRef.current = analyser;
       
-      setStatus('Audio system initialized');
+      // Set up event listeners to react to speech from the VoiceButton component
+      // The TTS library should output to the default audio destination, which our analyzer is connected to
+      
+      console.log('Audio system initialized for 4g3n7 avatar');
     } catch (error) {
       console.error('Web Audio API is not supported in this browser', error);
-      setStatus('Audio not supported in this browser');
-      setIsError(true);
     }
-  };
-  
-  // Setup audio visualizer
-  const setupVisualizer = () => {
-    if (!canvasRef.current) return;
-    
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-    if (!context) return;
-    
-    // Set canvas size
-    canvas.width = 350;
-    canvas.height = 60;
   };
   
   // Apply mood to avatar
@@ -825,7 +796,7 @@ const AgentAvatar = () => {
       avatar.position.y = 0.2 + Math.sin(time * 0.8) * 0.05;
       
       // Head idle rotation if not speaking
-      if (!isUsingMicrophone && !isPlaying) {
+      if (!isPlaying) {
         if (headRef.current) {
           const headTiltX = Math.sin(time * 0.4) * 0.03;
           const headTiltY = Math.sin(time * 0.3) * 0.03;
@@ -836,7 +807,7 @@ const AgentAvatar = () => {
       }
       
       // Mouth idle animation when not speaking
-      if (!isUsingMicrophone && !isPlaying) {
+      if (!isPlaying) {
         if (upperLipRef.current && lowerLipRef.current && innerMouthRef.current) {
           const mouthGap = Math.sin(time * 2) * 0.02;
           if (mouthGap > 0) {
@@ -916,7 +887,7 @@ const AgentAvatar = () => {
         positions[i3 + 2] = originalPositions[i3 + 2] * scaleFactor;
         
         // Audio reactivity for particle sizes
-        if (isUsingMicrophone || isPlaying) {
+        if (isPlaying) {
           sizes[i/3] = energyField.userData.sizes[i/3] * (1 + audioData.bass * 3);
         } else {
           sizes[i/3] = energyField.userData.sizes[i/3] * (1 + Math.sin(time * 2 + i) * 0.2);
@@ -1038,9 +1009,6 @@ const AgentAvatar = () => {
     
     setAudioData(newAudioData);
     
-    // Update visualizer
-    updateVisualizer(analyser, newAudioData);
-    
     // Animate avatar based on audio
     animateAvatarWithAudio(analyser, newAudioData);
   };
@@ -1084,96 +1052,14 @@ const AgentAvatar = () => {
     };
   };
   
-  // Update audio visualizer
+  // Update audio visualizer - this function is no longer needed but we'll keep an empty version
+  // in case it's still called somewhere
   const updateVisualizer = (analyser: AnalyserNode & { 
     frequencyData?: Uint8Array; 
     timeDomainData?: Uint8Array 
   }, audioData: AudioData) => {
-    if (!canvasRef.current) return;
-    
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-    if (!context) return;
-    
-    const width = canvas.width;
-    const height = canvas.height;
-    
-    // Clear the canvas
-    context.clearRect(0, 0, width, height);
-    
-    // Get data
-    const frequencyData = analyser.frequencyData as Uint8Array;
-    const timeDomainData = analyser.timeDomainData as Uint8Array;
-    
-    // Define colors based on current mood
-    const moodVisualColors = {
-      neutral: { primary: '#00aaff', secondary: '#003366' },
-      confident: { primary: '#00ff88', secondary: '#004422' },
-      analytical: { primary: '#ff00ff', secondary: '#330033' },
-      alert: { primary: '#ff5500', secondary: '#331100' }
-    };
-    
-    const colors = moodVisualColors[mood] || moodVisualColors.neutral;
-    
-    // Create gradient for bars
-    const gradient = context.createLinearGradient(0, height, 0, 0);
-    gradient.addColorStop(0, colors.secondary);
-    gradient.addColorStop(1, colors.primary);
-    
-    // Create frequency visualization
-    const bufferLength = frequencyData.length;
-    const barWidth = width / (bufferLength * 0.5); // Use only 50% of frequencies for better visualization
-    
-    // Draw frequency bars
-    context.fillStyle = gradient;
-    
-    for (let i = 0; i < bufferLength * 0.5; i++) {
-      const value = frequencyData[i];
-      const percent = value / 256;
-      const barHeight = height * percent * 0.9; // 90% of height max
-      
-      // Add a bit of horizontal blur for smoother visualization
-      context.globalAlpha = 0.7;
-      context.fillRect(i * barWidth, height - barHeight, barWidth - 1, barHeight);
-      
-      // Add a brighter center to each bar
-      context.globalAlpha = 0.9;
-      context.fillRect(i * barWidth + barWidth * 0.25, height - barHeight, barWidth * 0.5, barHeight);
-    }
-    
-    // Reset global alpha
-    context.globalAlpha = 1.0;
-    
-    // Add waveform on top
-    context.beginPath();
-    context.lineWidth = 2;
-    context.strokeStyle = colors.primary;
-    
-    // Draw time domain waveform
-    const sliceWidth = width / timeDomainData.length;
-    let x = 0;
-    
-    for (let i = 0; i < timeDomainData.length; i++) {
-      const v = timeDomainData[i] / 128.0;
-      const y = (v * height / 4) + (height / 2);
-      
-      if (i === 0) {
-        context.moveTo(x, y);
-      } else {
-        context.lineTo(x, y);
-      }
-      
-      x += sliceWidth;
-    }
-    
-    context.lineTo(width, height / 2);
-    context.stroke();
-    
-    // Add visualization glow effect
-    context.shadowBlur = 10;
-    context.shadowColor = colors.primary;
-    context.stroke();
-    context.shadowBlur = 0;
+    // We don't need canvas visualization anymore
+    return;
   };
   
   // Animate avatar based on audio input
@@ -1212,10 +1098,10 @@ const AgentAvatar = () => {
       speechCadence = changes / (timeDomainData.length / 100);
     }
     
-    // Animate mouth based on volume and speech patterns (with enhanced movement)
+    // Animate mouth based on volume and speech patterns or isPlaying state
     animateMouth(volume, speechIntensity);
     
-    // Eyes no longer move based on sound - static subtle glow instead
+    // Eyes with subtle constant glow
     if (leftEyeRef.current && rightEyeRef.current) {
       if (leftEyeRef.current.children[0] && rightEyeRef.current.children[0]) {
         // Just a subtle constant glow
@@ -1224,24 +1110,19 @@ const AgentAvatar = () => {
       }
     }
     
-    // Head movements based on speech
-    if (headRef.current && speechIntensity > 0.05) {
-      const headTurnFactor = 0.12 * speechIntensity;
-      const headTiltFactor = 0.06 * speechIntensity;
+    // Head movements based on speech or isPlaying state
+    if (headRef.current) {
+      // Use a simulated speechIntensity if we're playing but don't have audio data
+      const effectiveIntensity = isPlaying && speechIntensity < 0.05 ? 0.08 : speechIntensity;
       
-      const time = Date.now() * 0.001;
-      headRef.current.rotation.y = Math.sin(time * (0.002 + speechCadence * 0.001)) * headTurnFactor;
-      headRef.current.rotation.x = Math.cos(time * (0.0015 + speechCadence * 0.0005)) * headTiltFactor;
-    }
-    
-    // If in trading mode, animate number particles based on audio
-    if (mode === 'trading' && numberParticlesRef.current) {
-      const animateTradeNumbers = (audioData: AudioData) => {
-        // This function is not implemented in the original code
-        // Add implementation if needed
-      };
-      
-      animateTradeNumbers(audioData);
+      if (effectiveIntensity > 0.05) {
+        const headTurnFactor = 0.12 * effectiveIntensity;
+        const headTiltFactor = 0.06 * effectiveIntensity;
+        
+        const time = Date.now() * 0.001;
+        headRef.current.rotation.y = Math.sin(time * (0.002 + speechCadence * 0.001)) * headTurnFactor;
+        headRef.current.rotation.x = Math.cos(time * (0.0015 + speechCadence * 0.0005)) * headTiltFactor;
+      }
     }
   };
   
@@ -1251,8 +1132,18 @@ const AgentAvatar = () => {
       return;
     }
     
+    // Use the isPlaying state to control mouth animation if no speech intensity detected
+    let effectiveIntensity = speechIntensity;
+    
+    // If we're supposed to be speaking but don't have audio data yet, simulate it
+    if (isPlaying && speechIntensity < 0.05) {
+      // Simulate a pulsing talking motion based on time
+      const time = Date.now() * 0.001;
+      effectiveIntensity = 0.1 + Math.sin(time * 10) * 0.05;
+    }
+    
     // Combined intensity with higher emphasis on speech patterns
-    const combinedIntensity = volume * 0.25 + speechIntensity * 0.85;
+    const combinedIntensity = volume * 0.25 + effectiveIntensity * 0.85;
     
     // Apply enhanced logarithmic scaling for more pronounced movement
     const mouthOpenValue = combinedIntensity > 0.01 ? (Math.log10(1 + combinedIntensity * 20) * 1.2) : 0;
@@ -1271,8 +1162,8 @@ const AgentAvatar = () => {
     lowerLipRef.current.position.y = THREE.MathUtils.lerp(lowerLipRef.current.position.y, lowerPos, 0.7);
     
     // Enhanced horizontal lip movement for more expressive speech
-    if (speechIntensity > 0.05) { // Lower threshold for more movement
-      const lipXOffset = Math.sin(Date.now() * 0.015) * 0.03 * speechIntensity;
+    if (effectiveIntensity > 0.05 || isPlaying) { // Lower threshold for more movement
+      const lipXOffset = Math.sin(Date.now() * 0.015) * 0.03 * Math.max(0.3, effectiveIntensity);
       upperLipRef.current.position.x = lipXOffset * 0.7;
       lowerLipRef.current.position.x = lipXOffset;
     } else {
@@ -1295,238 +1186,10 @@ const AgentAvatar = () => {
     (innerMouthRef.current.material as THREE.MeshBasicMaterial).opacity = 0.4 + mouthOpenValue * 0.6;
   };
   
-  // Handle audio file upload
-  const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    setStatus(`Loading audio file: ${file.name}`);
-    
-    // Reset current audio if any
-    if (audioSourceRef.current) {
-      stopAudio();
-    }
-    
-    const reader = new FileReader();
-    fileReaderRef.current = reader;
-    
-    reader.onload = (event) => {
-      const audioContext = audioContextRef.current;
-      
-      if (!audioContext) {
-        setStatus('Audio system not initialized');
-        setIsError(true);
-        return;
-      }
-      
-      if (event.target && event.target.result) {
-        audioContext.decodeAudioData(event.target.result as ArrayBuffer)
-          .then(buffer => {
-            // Create buffer source
-            const audioSource = audioContext.createBufferSource();
-            audioSource.buffer = buffer;
-            
-            // Connect to analyzer
-            if (analyserRef.current) {
-              audioSource.connect(analyserRef.current);
-            }
-            audioSourceRef.current = audioSource;
-            
-            // Show file details
-            const duration = buffer.duration.toFixed(2);
-            const channels = buffer.numberOfChannels;
-            setStatus(`Loaded: ${file.name} (${duration}s, ${channels} channels)`);
-            setAudioLoaded(true);
-            setIsError(false);
-          })
-          .catch(error => {
-            console.error('Error decoding audio data', error);
-            setStatus('Error decoding audio file - unsupported format');
-            setIsError(true);
-          });
-      }
-    };
-    
-    reader.onerror = () => {
-      setStatus('Error reading audio file');
-      setIsError(true);
-    };
-    
-    reader.readAsArrayBuffer(file);
-  };
-  
-  // Play audio
-  const playAudio = () => {
-    if (!audioSourceRef.current || !audioContextRef.current) {
-      setStatus('No audio loaded');
-      return;
-    }
-    
-    // Resume audio context if suspended
-    if (audioContextRef.current.state === 'suspended') {
-      audioContextRef.current.resume();
-    }
-    
-    // Create a new source if the previous one was already played
-    if (audioSourceRef.current.buffer && !isPlaying) {
-      const audioContext = audioContextRef.current;
-      const buffer = audioSourceRef.current.buffer;
-      
-      const newSource = audioContext.createBufferSource();
-      newSource.buffer = buffer;
-      if (analyserRef.current) {
-        newSource.connect(analyserRef.current);
-      }
-      audioSourceRef.current = newSource;
-    }
-    
-    // Play audio
-    audioSourceRef.current.start(0);
-    setIsPlaying(true);
-    setStatus('Playing audio');
-    
-    // Handle completion
-    audioSourceRef.current.onended = () => {
-      setStatus('Audio playback completed');
-      setIsPlaying(false);
-    };
-  };
-  
-  // Stop audio playback
-  const stopAudio = () => {
-    if (audioSourceRef.current && isPlaying) {
-      try {
-        audioSourceRef.current.stop();
-        setIsPlaying(false);
-      } catch (e) {
-        // Source might have already stopped
-      }
-    }
-  };
-  
-  // Start microphone input
-  const startMicrophone = () => {
-    if (isUsingMicrophone) {
-      stopMicrophone();
-      return;
-    }
-    
-    setStatus('Requesting microphone access...');
-    
-    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-      .then((stream) => {
-        const audioContext = audioContextRef.current;
-        
-        if (!audioContext) {
-          setStatus('Audio system not initialized');
-          setIsError(true);
-          return;
-        }
-        
-        mediaStreamRef.current = stream;
-        
-        // Create microphone source
-        const micSource = audioContext.createMediaStreamSource(stream);
-        if (analyserRef.current) {
-          micSource.connect(analyserRef.current);
-        }
-        
-        setIsUsingMicrophone(true);
-        setStatus('Microphone active - speak to interact');
-        setIsError(false);
-      })
-      .catch((err) => {
-        console.error('Error accessing microphone:', err);
-        setStatus('Error accessing microphone - check permissions');
-        setIsError(true);
-      });
-  };
-  
-  // Stop microphone input
-  const stopMicrophone = () => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
-      mediaStreamRef.current = null;
-      setIsUsingMicrophone(false);
-      setStatus('Microphone stopped');
-    }
-  };
-
   return (
-    <div className="flex w-full h-screen bg-gray-900 text-white">
-      <div className="flex flex-col w-full h-full">
-        <div className="flex-grow relative" ref={mountRef}></div>
-        
-        <div className="p-4 bg-gray-800 border-t border-gray-700">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-blue-400">4g3n7 Interactive Avatar</h2>
-              <p className={`text-sm ${isError ? 'text-red-400' : 'text-gray-300'}`}>{status}</p>
-            </div>
-            
-            <div className="flex gap-2">
-              <select 
-                className="bg-gray-700 text-white px-3 py-2 rounded border border-gray-600"
-                value={mood}
-                onChange={(e) => applyMood(e.target.value as 'neutral' | 'confident' | 'analytical' | 'alert')}
-              >
-                <option value="neutral">Neutral</option>
-                <option value="confident">Confident</option>
-                <option value="analytical">Analytical</option>
-                <option value="alert">Alert</option>
-              </select>
-              
-              <select
-                className="bg-gray-700 text-white px-3 py-2 rounded border border-gray-600"
-                value={mode}
-                onChange={(e) => setMode(e.target.value as 'default' | 'trading')}
-              >
-                <option value="default">Default</option>
-                <option value="trading">Trading</option>
-              </select>
-            </div>
-          </div>
-          
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <canvas 
-                ref={canvasRef} 
-                className="w-full h-16 bg-gray-900 rounded"
-              ></canvas>
-            </div>
-            
-            <div className="flex flex-col gap-2 md:w-64">
-              <input 
-                type="file"
-                accept="audio/*"
-                className="hidden"
-                id="audio-file"
-                onChange={handleAudioUpload}
-              />
-              <label 
-                htmlFor="audio-file"
-                className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-center cursor-pointer"
-              >
-                Upload Audio
-              </label>
-              
-              <button 
-                className={`py-2 px-4 rounded text-center ${audioLoaded && !isPlaying ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600'}`}
-                onClick={playAudio}
-                disabled={!audioLoaded || isPlaying}
-              >
-                Play Audio
-              </button>
-              
-              <button 
-                className={`py-2 px-4 rounded text-center ${isUsingMicrophone ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
-                onClick={startMicrophone}
-              >
-                {isUsingMicrophone ? 'Stop Microphone' : 'Use Microphone'}
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="flex w-full h-full">
+      <div className="w-full h-full">
+        <div className="w-full h-full" ref={mountRef}></div>
       </div>
     </div>
   );

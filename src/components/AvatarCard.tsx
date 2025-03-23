@@ -1,10 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import SimpleAgentAvatar from './SimpleAgentAvatar';
 
 export default function AvatarCard() {
+  useEffect(() => {
+    console.log('AvatarCard: Component mounted');
+  }, []);
+
   return (
     <Card className="h-full w-full bg-black border-gray-800 overflow-hidden">
       <CardContent className="p-0 h-full">
