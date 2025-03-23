@@ -185,39 +185,41 @@ export function AgentTerminals() {
         </div>
         
         <TabsContent value="logs" className="flex flex-col h-full px-4 mt-0">
-          <ScrollArea className="h-[calc(100vh-12rem)] font-mono text-sm bg-black/50 rounded-md p-3">
-            <div ref={logsTerminalRef}>
-              {terminals.logs.map((message, index) => (
-                <div key={index} className={`mb-1 ${getMessageColorClass(message.type)}`}>
-                  <span className="text-gray-500">[{formatTimestamp(message.timestamp)}]</span>{' '}
-                  {message.content}
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="h-full overflow-hidden flex flex-col bg-black/50 rounded-md">
+            <ScrollArea className="flex-grow font-mono text-sm p-3">
+              <div ref={logsTerminalRef}>
+                {terminals.logs.map((message, index) => (
+                  <div key={index} className={`mb-1 ${getMessageColorClass(message.type)}`}>
+                    <span className="text-gray-500">[{formatTimestamp(message.timestamp)}]</span>{' '}
+                    {message.content}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
         </TabsContent>
         
         <TabsContent value="commands" className="flex flex-col h-full px-4 mt-0">
-          <div className="flex flex-row gap-4 mb-2">
-            <div className="flex-grow">
-              <ScrollArea className="h-[calc(100vh-16rem)] font-mono text-sm bg-black/50 rounded-md p-3 mb-2">
-                <div ref={commandsTerminalRef}>
-                  {terminals.commands.map((message, index) => (
-                    <div key={index} className={`mb-1 flex items-start ${getMessageColorClass(message.type)}`}>
-                      <div className="flex-grow">
-                        {message.type !== 'user' && (
-                          <span className="text-gray-500">[{formatTimestamp(message.timestamp)}]</span>
-                        )}{' '}
-                        {message.content}
-                      </div>
+          <div className="flex flex-col h-full overflow-hidden bg-black/50 rounded-md">
+            <ScrollArea className="flex-grow font-mono text-sm p-3">
+              <div ref={commandsTerminalRef}>
+                {terminals.commands.map((message, index) => (
+                  <div key={index} className={`mb-1 flex items-start ${getMessageColorClass(message.type)}`}>
+                    <div className="flex-grow">
                       {message.type !== 'user' && (
-                        <VoiceButton text={message.content} className="ml-2 flex-shrink-0" />
-                      )}
+                        <span className="text-gray-500">[{formatTimestamp(message.timestamp)}]</span>
+                      )}{' '}
+                      {message.content}
                     </div>
-                  ))}
-                </div>
-              </ScrollArea>
-              
+                    {message.type !== 'user' && (
+                      <VoiceButton text={message.content} className="ml-2 flex-shrink-0" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+            
+            <div className="p-3 border-t border-gray-800 bg-black/30">
               <form onSubmit={handleCommandSubmit} className="flex space-x-2">
                 <Textarea
                   value={command}
@@ -236,8 +238,6 @@ export function AgentTerminals() {
                 </Button>
               </form>
             </div>
-            
-
           </div>
         </TabsContent>
       </Tabs>

@@ -20,14 +20,16 @@ export default function VoiceButton({ text, className = '' }: VoiceButtonProps) 
   // Emit custom events for avatar to listen to
   useEffect(() => {
     if (isLoading) {
-      // Dispatch event when speech starts
+      // Dispatch event when speech starts using both approaches
       const startEvent = new Event('speechstart');
       window.dispatchEvent(startEvent);
+      window.postMessage('speechstart', '*');
       console.log('VoiceButton: Dispatched speechstart event');
     } else {
-      // Dispatch event when speech ends
+      // Dispatch event when speech ends using both approaches
       const endEvent = new Event('speechend');
       window.dispatchEvent(endEvent);
+      window.postMessage('speechend', '*');
       console.log('VoiceButton: Dispatched speechend event');
     }
   }, [isLoading]);

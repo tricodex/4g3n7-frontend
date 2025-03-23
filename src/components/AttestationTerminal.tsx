@@ -95,10 +95,10 @@ export default function AttestationTerminal() {
         <CardTitle className="text-md">Attestation Verification Terminal</CardTitle>
       </CardHeader>
       
-      <CardContent>
+      <CardContent className="flex flex-col overflow-hidden p-0">
         <div 
           ref={terminalRef} 
-          className="h-[60vh] overflow-y-auto p-2 text-sm"
+          className="flex-grow overflow-y-auto p-4 text-sm"
         >
           {attestation.status === 'not_started' && (
             <p className="text-yellow-300">
