@@ -265,7 +265,7 @@ export function RecallMemoryViewer() {
 
   return (
     <div className="w-full">
-      <h2 className="text-xl font-bold mb-4">Recall Network Memory Explorer</h2>
+      {/* <h2 className="text-xl font-bold mb-4">Recall Network Memory Explorer</h2> */}
       
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4 mb-4">

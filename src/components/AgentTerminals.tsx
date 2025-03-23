@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import AvatarCard from './AvatarCard';
 import VoiceButton from './VoiceButton';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -186,7 +185,7 @@ export function AgentTerminals() {
         </div>
         
         <TabsContent value="logs" className="flex flex-col h-full px-4 mt-0">
-          <ScrollArea className="h-[calc(100%-2rem)] font-mono text-sm bg-black/50 rounded-md p-3">
+          <ScrollArea className="h-[calc(100vh-12rem)] font-mono text-sm bg-black/50 rounded-md p-3">
             <div ref={logsTerminalRef}>
               {terminals.logs.map((message, index) => (
                 <div key={index} className={`mb-1 ${getMessageColorClass(message.type)}`}>
@@ -201,7 +200,7 @@ export function AgentTerminals() {
         <TabsContent value="commands" className="flex flex-col h-full px-4 mt-0">
           <div className="flex flex-row gap-4 mb-2">
             <div className="flex-grow">
-              <ScrollArea className="h-[calc(100%-5rem)] font-mono text-sm bg-black/50 rounded-md p-3 mb-2">
+              <ScrollArea className="h-[calc(100vh-16rem)] font-mono text-sm bg-black/50 rounded-md p-3 mb-2">
                 <div ref={commandsTerminalRef}>
                   {terminals.commands.map((message, index) => (
                     <div key={index} className={`mb-1 flex items-start ${getMessageColorClass(message.type)}`}>
@@ -238,9 +237,7 @@ export function AgentTerminals() {
               </form>
             </div>
             
-            <div className="w-48 h-48 shrink-0">
-              <AvatarCard />
-            </div>
+
           </div>
         </TabsContent>
       </Tabs>

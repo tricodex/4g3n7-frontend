@@ -4,12 +4,28 @@ import * as THREE from 'three';
 
 // Use a global flag for the singleton pattern instead of module-level
 // This ensures it persists across hot reloads during development
-if (typeof window !== 'undefined' && !window.hasOwnProperty('avatarInstanceMounted')) {
-  Object.defineProperty(window, 'avatarInstanceMounted', {
-    value: false,
-    writable: true,
-    configurable: true
-  });
+if (typeof window !== 'undefined') {
+  if (!window.hasOwnProperty('avatarInstanceMounted')) {
+    Object.defineProperty(window, 'avatarInstanceMounted', {
+      value: false,
+      writable: true,
+      configurable: true
+    });
+  }
+  
+  // Also store refs globally to persist them across hot reloads
+  if (!window.hasOwnProperty('avatarRefs')) {
+    Object.defineProperty(window, 'avatarRefs', {
+      value: {
+        scene: null,
+        camera: null,
+        renderer: null,
+        animationFrame: null
+      },
+      writable: true,
+      configurable: true
+    });
+  }
 }
 
 // Define types for audio data and refs
@@ -25,12 +41,17 @@ type AudioData = {
 declare global {
   interface Window {
     avatarInstanceMounted: boolean;
+    avatarRefs: {
+      scene: THREE.Scene | null;
+      camera: THREE.PerspectiveCamera | null;
+      renderer: THREE.WebGLRenderer | null;
+      animationFrame: number | null;
+    };
   }
 }
 
 // Avatar component
 const AgentAvatar = () => {
-  console.log('Initializing 3D Avatar - this should only happen once');
   const mountRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode & {
@@ -106,7 +127,11 @@ const AgentAvatar = () => {
   };
 
   useEffect(() => {
-    let animationFrameId: number = 0;
+    // Cancel any existing animation frames from previous renders
+    if (window.avatarRefs.animationFrame) {
+      cancelAnimationFrame(window.avatarRefs.animationFrame);
+      window.avatarRefs.animationFrame = null;
+    }
     
     // Prevent multiple instances using global flag
     if (window.avatarInstanceMounted) {
@@ -116,6 +141,7 @@ const AgentAvatar = () => {
     
     // Mark instance as mounted
     window.avatarInstanceMounted = true;
+    console.log('Initializing 3D Avatar - this should only happen once');
     console.log('Avatar singleton status: Instance mounting, avatarInstanceMounted =', window.avatarInstanceMounted);
     
     // Initialize the scene
@@ -187,7 +213,7 @@ const AgentAvatar = () => {
       
       // Animation loop
       const animate = () => {
-        animationFrameId = requestAnimationFrame(animate);
+        window.avatarRefs.animationFrame = requestAnimationFrame(animate);
         
         if (cameraRef.current && rendererRef.current && sceneRef.current) {
           const delta = clockRef.current.getDelta();
@@ -223,7 +249,14 @@ const AgentAvatar = () => {
     
     return () => {
       console.log('Avatar cleanup triggered');
-      cancelAnimationFrame(animationFrameId);
+      
+      // Cancel animation frame
+      if (window.avatarRefs.animationFrame) {
+        cancelAnimationFrame(window.avatarRefs.animationFrame);
+        window.avatarRefs.animationFrame = null;
+      }
+      
+      // Remove renderer from DOM
       if (mountRef.current && rendererRef.current) {
         try {
           mountRef.current.removeChild(rendererRef.current.domElement);
@@ -236,6 +269,11 @@ const AgentAvatar = () => {
       window.avatarInstanceMounted = false;
       console.log('Avatar singleton status: Instance unmounted, avatarInstanceMounted =', window.avatarInstanceMounted);
       
+      // Reset all global refs
+      window.avatarRefs.scene = null;
+      window.avatarRefs.camera = null;
+      window.avatarRefs.renderer = null;
+      
       // Clean up audio context
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
@@ -247,9 +285,18 @@ const AgentAvatar = () => {
   useEffect(() => {
     console.log('4g3n7Avatar: Setting up speech event listeners');
     
-    const handleSpeechStart = () => {
-      console.log('4g3n7Avatar: Received speechstart event');
+    const handleSpeechStart = (e) => {
+      console.log('4g3n7Avatar: Received speechstart event', e);
       setIsPlaying(true);
+      
+      // Manually simulate audio analysis since we might not get real audio data
+      setAudioData(prev => ({
+        ...prev,
+        volume: 0.3 + Math.random() * 0.2,
+        bass: 0.4 + Math.random() * 0.3,
+        mid: 0.3 + Math.random() * 0.2,
+        treble: 0.2 + Math.random() * 0.2
+      }));
     };
     
     const handleSpeechEnd = () => {
@@ -257,14 +304,26 @@ const AgentAvatar = () => {
       setIsPlaying(false);
     };
     
-    // Listen for custom events that VoiceButton will dispatch
+    // Listen for both custom events and window message events
     window.addEventListener('speechstart', handleSpeechStart);
     window.addEventListener('speechend', handleSpeechEnd);
+    
+    // Also listen for message events that might be used instead
+    const handleMessage = (event) => {
+      if (event.data === 'speechstart') {
+        handleSpeechStart(event);
+      } else if (event.data === 'speechend') {
+        handleSpeechEnd();
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
     
     return () => {
       console.log('4g3n7Avatar: Removing speech event listeners');
       window.removeEventListener('speechstart', handleSpeechStart);
       window.removeEventListener('speechend', handleSpeechEnd);
+      window.removeEventListener('message', handleMessage);
     };
   }, []);
   
@@ -1136,10 +1195,15 @@ const AgentAvatar = () => {
     let effectiveIntensity = speechIntensity;
     
     // If we're supposed to be speaking but don't have audio data yet, simulate it
-    if (isPlaying && speechIntensity < 0.05) {
-      // Simulate a pulsing talking motion based on time
+    if (isPlaying) {
+      // Simulate a more dynamic talking motion
       const time = Date.now() * 0.001;
-      effectiveIntensity = 0.1 + Math.sin(time * 10) * 0.05;
+      // Use a combination of sine waves at different frequencies for more natural movement
+      effectiveIntensity = Math.max(0.2, 
+        0.3 + Math.sin(time * 15) * 0.15 + 
+        Math.sin(time * 7.3) * 0.12 + 
+        Math.sin(time * 3.7) * 0.08
+      );
     }
     
     // Combined intensity with higher emphasis on speech patterns
@@ -1195,4 +1259,5 @@ const AgentAvatar = () => {
   );
 };
 
-export default AgentAvatar;
+// Export a memoized version to prevent unnecessary re-renders
+export default React.memo(AgentAvatar);

@@ -8,10 +8,10 @@ type SimpleAgentAvatarProps = {
   compact?: boolean;
 };
 
-// Simple wrapper component
+// Simple wrapper component - direct import without suspense to avoid freezing
 export default function SimpleAgentAvatar({ className = '', compact = false }: SimpleAgentAvatarProps) {
   return (
-    <div className={`relative h-full w-full ${className} ${compact ? 'scale-75' : ''}`}>
+    <div className={`relative h-[calc(100%-3rem)] w-full ${className} ${compact ? 'scale-75' : ''}`}>
       <AgentAvatar />
     </div>
   );

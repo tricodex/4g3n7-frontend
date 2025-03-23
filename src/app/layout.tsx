@@ -30,8 +30,7 @@ export default function RootLayout({
               />
             </Link>
             <nav className="flex items-center space-x-4">
-              <Link href="/" className="hover:text-blue-400 transition-colors">Dashboard</Link>
-              <Link href="/agent" className="hover:text-blue-400 transition-colors">Avatar</Link>
+              <Link href="/dashboard" className="hover:text-blue-400 transition-colors">Dashboard</Link>
               <Link href="/trade" className="hover:text-blue-400 transition-colors">Trade</Link>
             </nav>
           </header>
